@@ -12,6 +12,7 @@
 #define EXAMPLE_ENCODER_ECA_PIN    8
 #define EXAMPLE_ENCODER_ECB_PIN    7
 
+<<<<<<< HEAD
 // --- MQTT / REAL DATA CONFIG ---
 // #define ENABLE_REAL_DATA // <--- DECOMMENTER POUR ACTIVER LE WIFI/MQTT
 
@@ -28,6 +29,8 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 #endif
 
+=======
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
 // Knob Handle
 static knob_handle_t s_knob = NULL;
 
@@ -85,6 +88,7 @@ static void _knob_right_cb(void *arg, void *data)
     Serial.println("Knob Right");
 }
 
+<<<<<<< HEAD
 #ifdef ENABLE_REAL_DATA
 void setup_wifi() {
   delay(10);
@@ -151,11 +155,14 @@ void reconnect() {
 }
 #endif
 
+=======
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
 
 void setup() {
   Serial.begin(115200);
   delay(1000); 
   Serial.println("Starting LinkyMock...");
+<<<<<<< HEAD
   Serial.println("!!! NOUVELLE VERSION TEST !!!");
 
   // 1. Init Drivers
@@ -163,6 +170,12 @@ void setup() {
   
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   Touch_Init();
+=======
+
+  // 1. Init Drivers
+  Touch_Init();
+  lcd_lvgl_Init();
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
   lcd_bl_pwm_bsp_init(BACKLIGHT_BRIGHTNESS);
 
   // 2. Init Knob
@@ -173,19 +186,25 @@ void setup() {
   s_knob = iot_knob_create(&cfg);
   iot_knob_register_cb(s_knob, KNOB_LEFT, _knob_left_cb, NULL);
   iot_knob_register_cb(s_knob, KNOB_RIGHT, _knob_right_cb, NULL);
+<<<<<<< HEAD
 #else
   Serial.println("Drivers Hardware (Touch/Knob/BL) desactives pour ESP32 Standard");
 #endif
+=======
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
   
   // 3. Init UI
   ui_linky_init();
   
+<<<<<<< HEAD
 #ifdef ENABLE_REAL_DATA
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(mqtt_callback);
 #endif
   
+=======
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
   Serial.println("Setup done.");
 }
 
@@ -195,6 +214,7 @@ void loop() {
   // LVGL Task
   lv_timer_handler();
   
+<<<<<<< HEAD
   // Data Update
 #ifdef ENABLE_REAL_DATA
   if (!client.connected()) {
@@ -209,13 +229,18 @@ void loop() {
       last_update = millis();
   }
 #else
+=======
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
   // Mock Data Update every 1s
   if (millis() - last_update > 1000) {
       update_mock_data();
       ui_linky_update(&linky_data);
       last_update = millis();
   }
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
   
   delay(5);
 }

@@ -1,4 +1,5 @@
 #include "lcd_bsp.h"
+<<<<<<< HEAD
 #include "lcd_config.h"
 
 // Check if we are compiling for S3
@@ -7,6 +8,12 @@
 #include "esp_lcd_sh8601.h"
 #include "cst816.h"
 
+=======
+#include "esp_lcd_sh8601.h"
+#include "lcd_config.h"
+#include "cst816.h"
+// #include "ui.h"
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
 static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
 
@@ -14,6 +21,10 @@ static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define CO5300_ID 0xff
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
 static esp_lcd_panel_io_handle_t amoled_panel_io_handle = NULL; 
 
 static const sh8601_lcd_init_cmd_t lcd_init_cmds[] = 
@@ -202,6 +213,7 @@ static const sh8601_lcd_init_cmd_t lcd_init_cmds[] =
   {0x21, (uint8_t[]){0x00}, 1, 0},
   {0x11, (uint8_t[]){0x00}, 1, 120},
   {0x29, (uint8_t[]){0x00}, 1, 0},
+<<<<<<< HEAD
   {0x36, (uint8_t[]){0x00}, 1, 0},
 };
 
@@ -213,6 +225,15 @@ static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_
 void example_lvgl_rounder_cb(struct _lv_disp_drv_t *disp_drv, lv_area_t *area);
 static void example_lvgl_touch_cb(lv_indev_drv_t *drv, lv_indev_data_t *data);
 
+=======
+#ifdef EXAMPLE_Rotate_90
+  {0x36, (uint8_t[]){0x60}, 1, 0},
+#else
+  {0x36, (uint8_t[]){0x00}, 1, 0},
+#endif
+};
+
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
 void lcd_lvgl_Init(void)
 {
   static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
@@ -246,7 +267,11 @@ void lcd_lvgl_Init(void)
   const esp_lcd_panel_dev_config_t panel_config = 
   {
     .reset_gpio_num = EXAMPLE_PIN_NUM_LCD_RST,
+<<<<<<< HEAD
     .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
+=======
+    .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
     .bits_per_pixel = LCD_BIT_PER_PIXEL,
     .vendor_config = &vendor_config,
   };
@@ -291,7 +316,15 @@ void lcd_lvgl_Init(void)
   
   if (example_lvgl_lock(-1)) 
   {   
+<<<<<<< HEAD
     // ui_init();     /* A widgets example */
+=======
+   // ui_init();     /* A widgets example */
+    //lv_demo_music();        /* A modern, smartphone-like music player demo. */
+    //lv_demo_stress();       /* A stress test for LVGL. */
+    //lv_demo_benchmark();    /* A demo to measure the performance of LVGL or to compare different settings. */
+
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
     // Release the mutex
     example_lvgl_unlock();
   }
@@ -370,6 +403,7 @@ static void example_lvgl_touch_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
   {
     data->state = LV_INDEV_STATE_RELEASED;
   }
+<<<<<<< HEAD
 }
 #else
 // ------------------------------------
@@ -408,3 +442,6 @@ void lcd_lvgl_Init(void)
 //    printf("Touch: Mock Init\n");
 // }
 #endif
+=======
+}
+>>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
