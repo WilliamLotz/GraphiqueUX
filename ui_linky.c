@@ -429,13 +429,13 @@ void create_screen_week() {
     // Styles
     static lv_style_t style_line_week;
     lv_style_init(&style_line_week);
-    lv_style_set_line_width(&style_line_week, 20); 
+    lv_style_set_line_width(&style_line_week, 30); 
     lv_style_set_line_rounded(&style_line_week, true);
 
     int cx = 165; 
     int cy = 165; 
     int radius_start = 70; 
-    int max_len = 100;
+    int max_len = 70;
 
     // 7 Jours
     for(int i=0; i<7; i++) {
