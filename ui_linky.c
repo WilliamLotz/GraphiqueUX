@@ -557,7 +557,12 @@ void ui_linky_change_page(int direction) {
   if (current_page_index < 0) current_page_index = 4;
 
   switch (current_page_index) {
-    case 0: lv_scr_load(screen_meter); break;
+    case
+    
+    
+    
+    
+    0: lv_scr_load(screen_meter); break;
     case 1: lv_scr_load(screen_index); break; // Swap Order: Index First
     case 2: lv_scr_load(screen_week); break;  // Week Linked to Index
     case 3: lv_scr_load(screen_history); break; // Annual
