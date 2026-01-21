@@ -1,5 +1,4 @@
 #include "lcd_bsp.h"
-<<<<<<< HEAD
 #include "lcd_config.h"
 
 // Check if we are compiling for S3
@@ -7,13 +6,6 @@
 
 #include "esp_lcd_sh8601.h"
 #include "cst816.h"
-
-=======
-#include "esp_lcd_sh8601.h"
-#include "lcd_config.h"
-#include "cst816.h"
-// #include "ui.h"
->>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
 static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
 

@@ -461,7 +461,7 @@ void create_screen_week() {
     // Styles
     static lv_style_t style_line_week;
     lv_style_init(&style_line_week);
-    lv_style_set_line_width(&style_line_week, 36); 
+    lv_style_set_line_width(&style_line_week, 20); 
     lv_style_set_line_rounded(&style_line_week, true);
 
     int cx = 165; 
@@ -557,12 +557,7 @@ void ui_linky_change_page(int direction) {
   if (current_page_index < 0) current_page_index = 4;
 
   switch (current_page_index) {
-    case
-    
-    
-    
-    
-    0: lv_scr_load(screen_meter); break;
+    case 0: lv_scr_load(screen_meter); break;
     case 1: lv_scr_load(screen_index); break; // Swap Order: Index First
     case 2: lv_scr_load(screen_week); break;  // Week Linked to Index
     case 3: lv_scr_load(screen_history); break; // Annual
@@ -775,4 +770,9 @@ void ui_linky_update(linky_data_t *data) {
         lv_chart_refresh(chart_history);
     }
 >>>>>>> b068089c6b34ced669093eb3fcb1d01f123f963d
+
+
+
+
+
 }
