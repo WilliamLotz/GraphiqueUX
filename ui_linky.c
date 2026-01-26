@@ -1,4 +1,11 @@
 #include "ui_linky.h"
+#include <math.h>
+#include <time.h>
+#include <stdio.h>
+
+#ifndef PI
+#define PI 3.14159265358979323846
+#endif
 
 // Variables Globales UI
 
@@ -7,14 +14,17 @@ static lv_obj_t *screen_index;
 static lv_obj_t *screen_info;
 static lv_obj_t *screen_history;  // NEW
 
-// Variables globales pour le METER (Needle original)
-static lv_obj_t *widget_meter;
-static lv_meter_scale_t *scale;
-static lv_meter_indicator_t *meter_indic_needle;
-static lv_obj_t *label_papp;
+// Variables globales pour le METER (Premium Design)
+static lv_obj_t *label_time;
+static lv_obj_t *label_date;
+static lv_obj_t *label_papp_val; // "125.7"
+static lv_obj_t *label_papp_unit; // "kW"
 
-static lv_chart_series_t *ser_papp;
-static lv_obj_t *chart_history;
+static lv_obj_t *meter_bars[6];
+static lv_obj_t *meter_labels_val[6];
+static lv_obj_t *meter_labels_time[6];
+static int meter_values[6] = {0}; 
+// Removed meter_lines, points.
 
 static int current_page_index = 0;  // 0=Meter, 1=Index, 2=Info, 3=History
 
@@ -39,11 +49,10 @@ static lv_style_t style_text_xl;
 // --- Helper Helper ---
 void style_init() {
   lv_style_init(&style_text_large);
-  // Zoom not supported by default font engine often
-  // lv_style_set_transform_zoom(&style_text_large, 384);
+  // lv_style_set_transform_zoom(&style_text_large, 384); // x1.5 (Not supported?)
 
   lv_style_init(&style_text_xl);
-  // lv_style_set_transform_zoom(&style_text_xl, 512);
+  // lv_style_set_transform_zoom(&style_text_xl, 512); // x2
 }
 
 // --- Screens ---
@@ -52,49 +61,128 @@ void create_screen_meter() {
   screen_meter = lv_obj_create(NULL);
   lv_obj_set_style_bg_color(screen_meter, lv_color_black(), 0); 
   
-  // Titre
-  lv_obj_t *title = lv_label_create(screen_meter);
-  lv_label_set_text(title, "PUISSANCE");
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
-  lv_obj_set_style_text_color(title, lv_color_white(), 0); // BLANC NET
-  lv_obj_add_style(title, &style_text_large, 0);
+  // Get System Time for Init
+  time_t now;
+  time(&now);
+  struct tm *t = localtime(&now);
 
-  // Meter (Max size for 240x240)
-  widget_meter = lv_meter_create(screen_meter);
-  lv_obj_center(widget_meter);
-  lv_obj_set_size(widget_meter, 220, 220); 
-  lv_obj_set_style_bg_color(widget_meter, lv_color_black(), 0); // Fond Noir
-  lv_obj_set_style_border_width(widget_meter, 0, 0);
+  // 1. HEADER
+  label_time = lv_label_create(screen_meter);
+  lv_label_set_text_fmt(label_time, "%02d:%02d", t->tm_hour, t->tm_min);
+  lv_obj_set_style_text_color(label_time, lv_color_white(), 0);
+  lv_obj_set_style_text_font(label_time, &lv_font_montserrat_30, 0); // Font 30 Natif
+  lv_obj_align(label_time, LV_ALIGN_TOP_MID, 0, 40);
 
-  // Scale
-  scale = lv_meter_add_scale(widget_meter);
-  lv_meter_set_scale_range(widget_meter, scale, 0, 9000, 270, 135);
-  lv_meter_set_scale_ticks(widget_meter, scale, 10, 2, 10, lv_color_make(100,100,100)); // Gris Clair (Ticks)
-  lv_meter_set_scale_major_ticks(widget_meter, scale, 2, 4, 15, lv_color_white(), 15); // TICK MAJEUR BLANC
+  // Date
+  label_date = lv_label_create(screen_meter);
+  const char* week_days[] = {"DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"};
+  const char* months[] = {"JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"};
+  lv_label_set_text_fmt(label_date, "%s %d %s\n%d", week_days[t->tm_wday], t->tm_mday, months[t->tm_mon], 1900 + t->tm_year);
+  
+  lv_obj_set_style_text_align(label_date, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_color(label_date, lv_color_white(), 0); 
+  lv_obj_set_style_text_font(label_time, &lv_font_montserrat_20, 0);
+  lv_obj_align_to(label_date, label_time, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
 
-  // Arcs (Couleurs OK, gardons-les)
-  lv_meter_indicator_t *indic;
-  indic = lv_meter_add_arc(widget_meter, scale, 3, lv_palette_main(LV_PALETTE_GREEN), 0);
-  lv_meter_set_indicator_start_value(widget_meter, indic, 0);
-  lv_meter_set_indicator_end_value(widget_meter, indic, 3000);
+  // ... Box ...
+  lv_obj_t *box = lv_obj_create(screen_meter);
+  lv_obj_set_size(box, 260, 90);
+  lv_obj_align(box, LV_ALIGN_TOP_MID, 0, 110); 
+  lv_obj_set_style_bg_color(box, lv_color_black(), 0); // Noir pur 
+  lv_obj_set_style_border_color(box, lv_color_make(0, 0, 255), 0); // Hack: Envoyer Bleu -> Obtenir Vert
+  lv_obj_set_style_border_width(box, 1, 0);
+  lv_obj_set_style_radius(box, 20, 0);
+  lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
 
-  indic = lv_meter_add_arc(widget_meter, scale, 3, lv_palette_main(LV_PALETTE_ORANGE), 0);
-  lv_meter_set_indicator_start_value(widget_meter, indic, 3000);
-  lv_meter_set_indicator_end_value(widget_meter, indic, 6000);
+  // Value
+  label_papp_val = lv_label_create(box);
+  lv_label_set_text(label_papp_val, "0.4");
+  lv_obj_set_style_text_font(label_papp_val, &lv_font_montserrat_40, 0); // Font 40 Natif
+  lv_obj_set_style_text_color(label_papp_val, lv_color_white(), 0);
+  lv_obj_align(label_papp_val, LV_ALIGN_CENTER, -10, -8); // Recentrer un peu (moins gauche)
 
-  indic = lv_meter_add_arc(widget_meter, scale, 3, lv_palette_main(LV_PALETTE_RED), 0);
-  lv_meter_set_indicator_start_value(widget_meter, indic, 6000);
-  lv_meter_set_indicator_end_value(widget_meter, indic, 9000);
+  // Unit
+  label_papp_unit = lv_label_create(box);
+  lv_label_set_text(label_papp_unit, "KW");
+  lv_obj_set_style_text_font(label_papp_unit, &lv_font_montserrat_20, 0); // Font 20 Natif
+  lv_obj_set_style_text_color(label_papp_unit, lv_color_white(), 0);
+  lv_obj_align_to(label_papp_unit, label_papp_val, LV_ALIGN_OUT_RIGHT_BOTTOM, 5, -5); // Baseline adjust (Up a bit)
 
-  // Needle (Aiguille BLANCHE pour contraste max)
-  meter_indic_needle = lv_meter_add_needle_line(widget_meter, scale, 4, lv_color_white(), -10);
+  // Subtitle
+  lv_obj_t *lbl_inst = lv_label_create(box);
+  lv_label_set_text(lbl_inst, "INSTANT");
+  lv_obj_set_style_text_color(lbl_inst, lv_color_white(), 0);
+  lv_obj_set_style_text_font(lbl_inst, &lv_font_montserrat_16, 0); // Font 16 (Must receive compile)
+  lv_obj_align(lbl_inst, LV_ALIGN_BOTTOM_MID, 0, 11);
 
-  // Label Value
-  label_papp = lv_label_create(screen_meter);
-  lv_label_set_text(label_papp, "0 VA");
-  lv_obj_align(label_papp, LV_ALIGN_CENTER, 0, 60); // Un peu plus bas
-  lv_obj_set_style_text_color(label_papp, lv_color_white(), 0); // BLANC
-  lv_obj_add_style(label_papp, &style_text_xl, 0); 
+
+  // 3. BARRES
+  int bar_w = 28;
+  int gap = 16;
+  int start_x = -((6 * bar_w + 5 * gap) / 2) + (bar_w/2); 
+
+  // Init Mock Values for Visualization
+  int mock_vals[6] = {500, 1500, 3200, 800, 4500, 2100};
+  for(int k=0; k<6; k++) meter_values[k] = mock_vals[k];
+
+  for(int i=0; i<6; i++) {
+      // Calc Height from Mock
+      int val = meter_values[i];
+      if(val > 9000) val = 9000;
+      int h = (val * 100) / 9000;
+      if(h < 5) h = 5;
+
+      // Use proper Bar Widget
+      meter_bars[i] = lv_bar_create(screen_meter);
+      lv_bar_set_range(meter_bars[i], 0, 100);
+      lv_bar_set_value(meter_bars[i], 100, LV_ANIM_OFF); // Always full, size varies
+      
+      lv_obj_set_size(meter_bars[i], bar_w, h); // Dynamic Height
+      
+      // Style Indicator (The actual bar)
+      lv_obj_set_style_radius(meter_bars[i], 2, LV_PART_MAIN);      // Force Main Square
+      lv_obj_set_style_radius(meter_bars[i], 2, LV_PART_INDICATOR); // Slight Rounding
+      
+      // Final Cyan (0,255,255) - No Artifacts with lv_bar!
+      lv_obj_set_style_bg_color(meter_bars[i], lv_color_make(0, 255, 255), LV_PART_INDICATOR);
+      lv_obj_set_style_bg_grad_color(meter_bars[i], lv_color_make(0, 255, 255), LV_PART_INDICATOR); // Same for safety
+      lv_obj_set_style_bg_grad_dir(meter_bars[i], LV_GRAD_DIR_NONE, LV_PART_INDICATOR);
+      
+      // Hidden Background
+      lv_obj_set_style_bg_opa(meter_bars[i], LV_OPA_TRANSP, LV_PART_MAIN);
+
+      // Position X
+      int x_pos = start_x + i * (bar_w + gap);
+      
+      // Position Y Curve Effect (Smile)
+      int y_off = -15; // Remonter ENCORE les bords (60 et 10)
+      if(i==1 || i==4) y_off = 10; 
+      if(i==2 || i==3) y_off = 25; 
+
+      lv_obj_align(meter_bars[i], LV_ALIGN_BOTTOM_MID, x_pos, -50 + y_off); 
+
+      // Label Value (Au dessus)
+      meter_labels_val[i] = lv_label_create(screen_meter);
+      
+      // Format text from Mock
+      float kw_bar = val / 1000.0f;
+      int i_b = (int)kw_bar; int d_b = (int)((kw_bar - i_b)*10);
+      lv_label_set_text_fmt(meter_labels_val[i], "%d.%d", i_b, d_b);
+      
+      // Small Font via Zoom (14 -> ~10) -> Removed for sharpness
+      // lv_obj_set_style_transform_zoom(meter_labels_val[i], 180, 0); 
+      lv_obj_set_style_text_color(meter_labels_val[i], lv_color_white(), 0);
+      lv_obj_align_to(meter_labels_val[i], meter_bars[i], LV_ALIGN_OUT_TOP_MID, 0, -5);
+
+      // Label Time (Suit la barre)
+      meter_labels_time[i] = lv_label_create(screen_meter);
+      lv_label_set_text_fmt(meter_labels_time[i], "%d", (6-i)*10); 
+      // lv_obj_set_style_transform_zoom(meter_labels_time[i], 180, 0); 
+      lv_obj_set_style_text_color(meter_labels_time[i], lv_color_white(), 0); 
+      
+      lv_obj_align_to(meter_labels_time[i], meter_bars[i], LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+  }
+
 }
 
 void create_screen_index() {
@@ -509,7 +597,7 @@ void ui_linky_init() {
 
   create_screen_meter();
   create_screen_index();
-  create_screen_week(); // NEW
+  create_screen_week();
   create_screen_history();
   create_screen_info();
 
@@ -519,63 +607,112 @@ void ui_linky_init() {
 }
 
 void ui_linky_change_page(int direction) {
+  printf("UI PAGE CHANGE CMD: %d\n", direction);
   current_page_index += direction;
 
   if (current_page_index > 4) current_page_index = 0;
   if (current_page_index < 0) current_page_index = 4;
 
   switch (current_page_index) {
-    case 0: lv_scr_load(screen_meter); break;
-    case 1: lv_scr_load(screen_index); break; // Swap Order: Index First
-    case 2: lv_scr_load(screen_week); break;  // Week Linked to Index
-    case 3: lv_scr_load(screen_history); break; // Annual
-    case 4: lv_scr_load(screen_info); break;
+    case 0: lv_scr_load_anim(screen_meter, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 1: lv_scr_load_anim(screen_index, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 2: lv_scr_load_anim(screen_week, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 3: lv_scr_load_anim(screen_history, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 4: lv_scr_load_anim(screen_info, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
   }
 }
 
 void ui_linky_update(linky_data_t *data) {
-  // Meter
-  if (meter_indic_needle && label_papp && widget_meter) {
-    lv_meter_set_indicator_value(widget_meter, meter_indic_needle, data->papp);
-    lv_label_set_text_fmt(label_papp, "%d VA", data->papp);
+  // 0. Update Time & Date (System Time)
+  time_t now;
+  time(&now);
+  struct tm *t = localtime(&now);
+
+  if (label_time) {
+      lv_obj_set_style_text_color(label_time, lv_color_make(0, 255, 0), 0); // Debug Green
+      lv_label_set_text_fmt(label_time, "%02d:%02d", t->tm_hour, t->tm_min);
   }
 
-  // Index
+  if (label_date) {
+      const char* week_days[] = {"DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"};
+      const char* months[] = {"JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"};
+      lv_label_set_text_fmt(label_date, "%s %d %s\n%d", week_days[t->tm_wday], t->tm_mday, months[t->tm_mon], 1900 + t->tm_year);
+  }
+
+  // 1. Update Main Value (kW)
+  if (label_papp_val) {
+      float kw = data->papp / 1000.0f;
+      int i_kw = (int)kw;
+      int d_kw = (int)((kw - i_kw) * 10);
+      lv_label_set_text_fmt(label_papp_val, "%d.%d", i_kw, d_kw);
+      // Re-align unit if text length changes?
+      // Re-align unit if text length changes
+      lv_obj_align_to(label_papp_unit, label_papp_val, LV_ALIGN_OUT_RIGHT_BOTTOM, 5, -3);
+  }
+
+  // Index ... (Keep existing)
   if (label_index_base) lv_label_set_text_fmt(label_index_base, "BASE: %lu", (unsigned long)data->index_base);
   if (label_index_hp) lv_label_set_text_fmt(label_index_hp, "HP: %lu", (unsigned long)data->index_hp);
   if (label_index_hc) lv_label_set_text_fmt(label_index_hc, "HC: %lu", (unsigned long)data->index_hc);
 
-  // Info & Stats Calculation
-  // Voltage
-  if (data->voltage > 0) { // Ignore 0 data if invalid
+  // Info ... (Keep existing)
+  if (data->voltage > 0) { 
       if (data->voltage < v_min) v_min = data->voltage;
       if (data->voltage > v_max) v_max = data->voltage;
       v_sum += data->voltage;
       v_count++;
   }
   int v_avg = (v_count > 0) ? (v_sum / v_count) : 0;
-
   if (label_volt) lv_label_set_text_fmt(label_volt, "%d V", data->voltage);
   if (label_volt_stats) lv_label_set_text_fmt(label_volt_stats, "Min:%d      Avg:%d      Max:%d", (v_min==999)?0:v_min, v_avg, v_max);
 
-  // Current
   if (data->iinst < a_min) a_min = data->iinst;
   if (data->iinst > a_max) a_max = data->iinst;
   a_sum += data->iinst;
   a_count++;
   int a_avg = (a_count > 0) ? (a_sum / a_count) : 0;
-
   if (label_amp) lv_label_set_text_fmt(label_amp, "%d A", data->iinst);
   if (label_amp_stats) lv_label_set_text_fmt(label_amp_stats, "Min:%d      Avg:%d      Max:%d", (a_min==999)?0:a_min, a_avg, a_max);
 
-  // Chart
-  if (chart_history && ser_papp) {
-    lv_chart_set_next_value(chart_history, ser_papp, data->papp);
-    lv_chart_refresh(chart_history);
+  // 2. Bars Update (10 min interval)
+  static uint32_t last_chart_upd = 0;
+  static bool first_chart = true; // Pour forcer le 1er point
+  
+  // Check existence
+  if (meter_bars[0]) {
+       if (first_chart || (lv_tick_get() - last_chart_upd > 10 * 60 * 1000)) {
+           // Shift Left (0 <- 1... 4 <- 5)
+           for(int i=0; i<5; i++) meter_values[i] = meter_values[i+1];
+           meter_values[5] = data->papp; // Newest at right (index 5)
+
+           last_chart_upd = lv_tick_get();
+           first_chart = false;
+           
+           // Redraw Bars
+           for(int i=0; i<6; i++) {
+               int val = meter_values[i];
+               // Max Height 100px for 9000W (9kW)
+               if(val > 9000) val = 9000;
+               int h = (val * 100) / 9000;
+               if(h < 5) h = 5; // Min height
+
+               lv_obj_set_height(meter_bars[i], h);
+               
+               // Update Label Value above
+               float kw_bar = val / 1000.0f;
+
+               if (meter_labels_val[i]) {
+                   // Manual format for small labels too? Or %.1f safe?
+                   // If %.1f works here keep it. If not, use int logic.
+                   // Let's rely on %.1f for now, "f kW" issue might be specific to previous context?
+                   // No, keep consistent manual logic if possible, or just %.1f.
+                   // The previous error was weird ("f" displayed).
+                   // Let's use manual logic condensed:
+                   int i_b = (int)kw_bar; int d_b = (int)((kw_bar - i_b)*10);
+                   lv_label_set_text_fmt(meter_labels_val[i], "%d.%d", i_b, d_b);
+                   lv_obj_align_to(meter_labels_val[i], meter_bars[i], LV_ALIGN_OUT_TOP_MID, 0, -5);
+               }
+           }
+       }
   }
-
-
-
-
-
 }

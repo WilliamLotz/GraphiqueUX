@@ -201,7 +201,7 @@ static const sh8601_lcd_init_cmd_t lcd_init_cmds[] =
   {0x21, (uint8_t[]){0x00}, 1, 0},
   {0x11, (uint8_t[]){0x00}, 1, 120},
   {0x29, (uint8_t[]){0x00}, 1, 0},
-  {0x36, (uint8_t[]){0x00}, 1, 0},
+  {0x36, (uint8_t[]){0x08}, 1, 0}, // MADCTL: Set BGR bit (0x08) to fix Red/Blue Swap
 };
 
 static bool example_lvgl_lock(int timeout_ms);
@@ -245,7 +245,7 @@ void lcd_lvgl_Init(void)
   const esp_lcd_panel_dev_config_t panel_config = 
   {
     .reset_gpio_num = EXAMPLE_PIN_NUM_LCD_RST,
-    .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
+    .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB, // Essai RGB pour corriger Swap R-B
     .bits_per_pixel = LCD_BIT_PER_PIXEL,
     .vendor_config = &vendor_config,
   };
