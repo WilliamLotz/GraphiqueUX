@@ -629,11 +629,12 @@ void ui_linky_update(linky_data_t *data) {
   struct tm *t = localtime(&now);
 
   if (label_time) {
-      lv_obj_set_style_text_color(label_time, lv_color_make(0, 255, 0), 0); // Debug Green
+      lv_obj_set_style_text_color(label_time, lv_color_white(), 0); 
       lv_label_set_text_fmt(label_time, "%02d:%02d", t->tm_hour, t->tm_min);
   }
 
   if (label_date) {
+      lv_obj_set_style_text_color(label_date, lv_color_white(), 0);
       const char* week_days[] = {"DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"};
       const char* months[] = {"JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"};
       lv_label_set_text_fmt(label_date, "%s %d %s\n%d", week_days[t->tm_wday], t->tm_mday, months[t->tm_mon], 1900 + t->tm_year);
