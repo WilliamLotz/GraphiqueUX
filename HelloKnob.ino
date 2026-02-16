@@ -20,9 +20,17 @@
 #include <PubSubClient.h> 
 #include <ArduinoJson.h>  
 #include <time.h>
+#include <EEPROM.h> 
 
-const char* ssid = "Livebox-6FF0";      // <--- METTRE VOTRE SSID
-const char* password = "sdP9kTkycpa2vTCuVi";  // <--- METTRE VOTRE PASSWORD
+// EEPROM Config
+#define EEPROM_SIZE 128
+struct WifiConfig {
+    char ssid[32];
+    char pwd[32];
+    uint8_t initialized; // 0xA5 if valid
+};
+WifiConfig wifi_conf;
+
 const char* mqtt_server = "192.168.1.100";
 
 WiFiClient espClient;
@@ -72,23 +80,7 @@ void update_mock_data() {
 }
 
 #ifdef ENABLE_REAL_DATA
-void setup_wifi() {
-  WiFi.begin(ssid, password);
-  
-  // Timeout 5s (Non-blocking boot)
-  int tries = 0;
-  while (WiFi.status() != WL_CONNECTED && tries < 10) {
-    delay(500); Serial.print("."); tries++;
-  }
-  Serial.println("");
-  
-  if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("WiFi Connected!");
-      Serial.println(WiFi.localIP());
-  } else {
-      Serial.println("WiFi Timeout -> Continuing Offline");
-  }
-}
+
 
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   // Parsing MQTT...
@@ -105,7 +97,7 @@ void setup() {
 
 #ifdef ENABLE_REAL_DATA
     Serial.println("MODE WIFI ACTIF");
-    setup_wifi();
+
     // client.setServer...
     configTime(3600, 3600, "pool.ntp.org");
 #else
@@ -139,6 +131,21 @@ void setup() {
 
   // 4. Init UI
   ui_linky_init();
+
+  // Load WiFi from EEPROM
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.get(0, wifi_conf);
+  if (wifi_conf.initialized == 0xA5) {
+      Serial.println("EEPROM WiFi Found:");
+      Serial.println(wifi_conf.ssid);
+      // Auto-connect on boot
+      strcpy(wifi_ssid, wifi_conf.ssid);
+      strcpy(wifi_pwd, wifi_conf.pwd);
+      wifi_connect_requested = true; // Trigger connection
+  } else {
+      Serial.println("No WiFi saved in EEPROM.");
+  }
+  
   Serial.println("Setup done.");
 }
 
@@ -179,5 +186,52 @@ void loop() {
   }
 #endif
   
+  // 4. WiFi Handler (Dynamic)
+  if (wifi_connect_requested) {
+      wifi_connect_requested = false;
+      
+      // Trim potential newlines from UI input
+      String ssid_str = String(wifi_ssid); ssid_str.trim();
+      String pwd_str = String(wifi_pwd); pwd_str.trim();
+      
+      Serial.print("Connecting to: ["); Serial.print(ssid_str); Serial.println("]");
+      
+      WiFi.mode(WIFI_STA); // Force Station mode
+      WiFi.disconnect(true); // Full disconnect/cleanup
+      delay(100);
+      WiFi.begin(ssid_str.c_str(), pwd_str.c_str());
+      
+      uint32_t start_wifi = millis();
+      bool connected = false;
+      while(millis() - start_wifi < 20000) { // 20s Timeout (More time)
+          if(WiFi.status() == WL_CONNECTED) {
+              connected = true;
+              break;
+          }
+          lv_timer_handler(); // Keep UI alive
+          delay(100);
+      }
+      
+      if(connected) {
+          Serial.println("WiFi Connected!");
+          Serial.println(WiFi.localIP());
+          
+          // Save to EEPROM
+          strcpy(wifi_conf.ssid, ssid_str.c_str());
+          strcpy(wifi_conf.pwd, pwd_str.c_str());
+          wifi_conf.initialized = 0xA5;
+          EEPROM.put(0, wifi_conf);
+          EEPROM.commit();
+          Serial.println("WiFi Saved to EEPROM!");
+
+          String ip = WiFi.localIP().toString();
+          String msg = "Connecte " + ip;
+          ui_linky_set_wifi_status(msg.c_str(), true);
+      } else {
+          Serial.print("WiFi Failed, Status: "); Serial.println(WiFi.status());
+          ui_linky_set_wifi_status("Echec Connexion", false);
+      }
+  }
+
   delay(5);
 }

@@ -13,12 +13,16 @@ static lv_obj_t *screen_index;
 static lv_obj_t *screen_week;    // Page 2
 static lv_obj_t *screen_history; // Page 3
 static lv_obj_t *screen_info;    // Page 4
+static lv_obj_t *screen_wifi;    // Page 5
 
-static int current_page_index = 0; // 0=Meter, 1=Index, 2=Week, 3=History, 4=Info
+static int current_page_index = 0; // 0=Meter, 1=Index, 2=Week, 3=History, 4=Info, 5=WiFi
+
 
 // Styles
 static lv_style_t style_text_large;
 static lv_style_t style_text_xl;
+static lv_style_t style_kb; // Style pour le clavier (touches)
+static lv_style_t style_kb_main; // Style pour le clavier (conteneur)
 
 // Meter Widgets
 static lv_obj_t *label_time;
@@ -57,6 +61,72 @@ static lv_obj_t * week_lines[7];
 static lv_obj_t * label_days[7];
 const char* day_names[7] = {"L", "M", "M", "J", "V", "S", "D"};
 
+// WiFi Widgets
+static lv_obj_t *ta_ssid;
+static lv_obj_t *ta_pwd;
+static lv_obj_t *kb;
+static lv_obj_t *btn_connect;
+static lv_obj_t *label_wifi_status;
+char wifi_ssid[32] = {0};
+char wifi_pwd[32] = {0};
+volatile bool wifi_connect_requested = false;
+
+// AZERTY Layout Maps (5 Rows for better spacing)
+// AZERTY Layout Maps (Fixed with Shift Logic)
+static const char * kb_map_azerty_lc[] = {
+    "a", "z", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
+    "q", "s", "d", "f", "g", "h", "j", "k", "l", "m", "\n",
+    " ", LV_SYMBOL_UP, "w", "x", "c", "v", "b", "n", LV_SYMBOL_BACKSPACE,"  ", "\n",
+    "  ", "1#", " ", ".", "  ", "\n",
+    ""
+    
+    
+};
+
+static const char * kb_map_azerty_uc[] = {
+    "A", "Z", "E", "R", "T", "Y", "U","I", "O", "P", "\n",
+    "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "\n",
+    " ", LV_SYMBOL_DOWN, "W", "X", "C", "V", "B", "N", LV_SYMBOL_BACKSPACE,"  ", "\n",
+    "  ", "1#", " ", ".", "  ", "\n",
+    ""
+    
+};
+
+static const char * kb_map_spec[] = {
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "\n",
+    "+", "-", "/", "*", "=", "%", "!", "?", "#", "<", ">", "\n",
+    " ", "@", "$", "(", ")", "{", "}", "[", "]", ";", ":", " ", "\n",
+    " ", "'", "_", "&", "^", "~", "|", "`", LV_SYMBOL_BACKSPACE, " ", "\n",
+    "  ","abc", " ", ",", "  ", "\n",
+    ""
+    
+    
+};
+
+static const lv_btnmatrix_ctrl_t kb_ctrl_azerty_lc_map[] = {
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    2, 4, 3, 3, 3, 3, 3, 3, 4, 2,
+    2, 3, 10, 3, 2
+    
+
+};
+
+static const lv_btnmatrix_ctrl_t kb_ctrl_azerty_uc_map[] = {
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    2, 4, 3, 3, 3, 3, 3, 3, 4, 2,
+    2, 3, 10, 3, 2
+};
+
+static const lv_btnmatrix_ctrl_t kb_ctrl_spec_map[] = {
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1,
+    2, 3, 3, 3, 3, 3, 3, 3, 5, 2,
+    2, 4, 6, 3, 2
+};
+
 
 // --- INIT STYLES ---
 void style_init() {
@@ -66,6 +136,19 @@ void style_init() {
 
   lv_style_init(&style_text_xl);
   // lv_style_set_transform_zoom(&style_text_xl, 512); 
+
+  // Style Clavier (Touches)
+  lv_style_init(&style_kb);
+  lv_style_set_text_font(&style_kb, &lv_font_montserrat_16);
+  lv_style_set_radius(&style_kb, 3); // Rayon plus petit
+
+  // Style Clavier (Conteneur/Espacements)
+  lv_style_init(&style_kb_main);
+  lv_style_set_pad_row(&style_kb_main, 1);    // Petit espace (1px)
+  lv_style_set_pad_column(&style_kb_main, 1); // Petit espace (1px)
+  lv_style_set_pad_all(&style_kb_main, 1);    // Marge minime
+  lv_style_set_pad_bottom(&style_kb_main, 10); // Espace vide en bas pour éviter la zone tactile difficile
+  lv_style_set_radius(&style_kb_main, 0);
 }
 
 // --- SCREEN: METER (PAGE 0) ---
@@ -468,6 +551,164 @@ void create_screen_history() {
     }
 }
 
+// --- SCREEN: WIFI (PAGE 5) ---
+static void ta_event_cb(lv_event_t * e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * ta = lv_event_get_target(e);
+    if(code == LV_EVENT_CLICKED || code == LV_EVENT_FOCUSED) {
+        if(kb != NULL) {
+            lv_keyboard_set_textarea(kb, ta);
+            lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+    if(code == LV_EVENT_DEFOCUSED) {
+        if(kb != NULL) {
+            lv_keyboard_set_textarea(kb, NULL);
+            lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+static void kb_event_cb(lv_event_t * e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t * kb_obj = lv_event_get_target(e);
+
+    if(code == LV_EVENT_VALUE_CHANGED) {
+        uint16_t btn_id = lv_btnmatrix_get_selected_btn(kb_obj);
+        if(btn_id == LV_BTNMATRIX_BTN_NONE) return;
+
+        const char * txt = lv_btnmatrix_get_btn_text(kb_obj, btn_id);
+        if(txt == NULL) return;
+
+        lv_obj_t * ta = lv_keyboard_get_textarea(kb_obj); // Get active Text Area
+
+        if(strcmp(txt, LV_SYMBOL_UP) == 0) {
+            if(ta) lv_textarea_del_char(ta); // Remove the inserted symbol
+            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_TEXT_UPPER);
+            lv_indev_wait_release(lv_indev_get_act()); // Prevent ghost click
+        }
+        else if(strcmp(txt, LV_SYMBOL_DOWN) == 0) {
+            if(ta) lv_textarea_del_char(ta); // Remove the inserted symbol
+            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_TEXT_LOWER);
+            lv_obj_set_height(kb_obj, lv_pct(60)); // Back to normal height
+           
+        }
+        else if(strcmp(txt, "1#") == 0) {
+            if(ta) {
+                lv_textarea_del_char(ta); // Remove #
+                lv_textarea_del_char(ta); // Remove 1
+            }
+            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_SPECIAL);
+            lv_obj_set_height(kb_obj, lv_pct(70)); // Taller for special chars
+            lv_indev_wait_release(lv_indev_get_act()); // Prevent ghost click
+        }
+        else if(strcmp(txt, "abc") == 0) {
+            if(ta) {
+                lv_textarea_del_char(ta); // c
+                lv_textarea_del_char(ta); // b
+                lv_textarea_del_char(ta); // a
+            }
+            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_TEXT_LOWER);
+            lv_obj_set_height(kb_obj, lv_pct(60)); // Back to normal height
+            lv_indev_wait_release(lv_indev_get_act()); // Prevent ghost click
+        }
+    }
+    else if(code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
+        lv_obj_add_flag(kb_obj, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void btn_connect_event_cb(lv_event_t * e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if(code == LV_EVENT_CLICKED) {
+        // Sauvegarde des credentials (simulation pour l'instant)
+        const char * txt_ssid = lv_textarea_get_text(ta_ssid);
+        const char * txt_pwd = lv_textarea_get_text(ta_pwd);
+        snprintf(wifi_ssid, sizeof(wifi_ssid), "%s", txt_ssid);
+        snprintf(wifi_pwd, sizeof(wifi_pwd), "%s", txt_pwd);
+        
+        if (label_wifi_status) {
+            lv_label_set_text(label_wifi_status, "Connexion en cours...");
+            lv_obj_set_style_text_color(label_wifi_status, lv_color_make(255, 165, 0), 0); // Orange
+            wifi_connect_requested = true;
+        }
+        printf("WiFi Connect Request: %s / %s\n", wifi_ssid, wifi_pwd);
+    }
+}
+
+// Fonction Helper pour le statut
+void ui_linky_set_wifi_status(const char* msg, bool success) {
+    if(label_wifi_status) {
+        lv_label_set_text(label_wifi_status, msg);
+        if(success) lv_obj_set_style_text_color(label_wifi_status, lv_color_make(0, 255, 0), 0); // Vert
+        else lv_obj_set_style_text_color(label_wifi_status, lv_color_make(255, 0, 0), 0); // Rouge
+    }
+}
+
+void create_screen_wifi() {
+    screen_wifi = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(screen_wifi, lv_color_black(), 0);
+    
+    // Title
+    lv_obj_t * title = lv_label_create(screen_wifi);
+    lv_label_set_text(title, "CONFIGURATION WIFI");
+    lv_obj_set_style_text_color(title, lv_color_white(), 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
+
+    // SSID Area
+    ta_ssid = lv_textarea_create(screen_wifi);
+    lv_obj_set_style_text_font(ta_ssid, &lv_font_montserrat_20, 0); // Police agrandie
+    lv_textarea_set_placeholder_text(ta_ssid, "Nom du reseau");
+    lv_obj_set_width(ta_ssid, 220);
+    lv_obj_align(ta_ssid, LV_ALIGN_TOP_MID, 0, 60);
+    lv_obj_add_event_cb(ta_ssid, ta_event_cb, LV_EVENT_ALL, NULL);
+
+    // Password Area
+    ta_pwd = lv_textarea_create(screen_wifi);
+    lv_obj_set_style_text_font(ta_pwd, &lv_font_montserrat_20, 0); // Police agrandie
+    lv_textarea_set_placeholder_text(ta_pwd, "Mot de passe");
+    lv_textarea_set_password_mode(ta_pwd, false);
+    lv_obj_set_width(ta_pwd, 220);
+    lv_obj_align(ta_pwd, LV_ALIGN_TOP_MID, 0, 110);
+    lv_obj_add_event_cb(ta_pwd, ta_event_cb, LV_EVENT_ALL, NULL);
+
+    // Connect Button
+    btn_connect = lv_btn_create(screen_wifi);
+    lv_obj_set_width(btn_connect, 120);
+    lv_obj_align(btn_connect, LV_ALIGN_TOP_MID, 0, 160);
+    lv_obj_add_event_cb(btn_connect, btn_connect_event_cb, LV_EVENT_ALL, NULL);
+    lv_obj_set_style_bg_color(btn_connect, lv_color_make(0, 100, 255), 0);
+
+    lv_obj_t * btn_label = lv_label_create(btn_connect);
+    lv_label_set_text(btn_label, "Connexion");
+    lv_obj_center(btn_label);
+
+    // Status Label
+    label_wifi_status = lv_label_create(screen_wifi);
+    lv_label_set_text(label_wifi_status, "Pret");
+    lv_obj_set_style_text_color(label_wifi_status, lv_color_make(0, 255, 0), 0);
+    lv_obj_align(label_wifi_status, LV_ALIGN_TOP_MID, 0, 200);
+
+    // Keyboard (Initially Hidden)
+    kb = lv_keyboard_create(screen_wifi);
+    lv_obj_set_width(kb, lv_pct(100)); 
+    lv_obj_set_height(kb, lv_pct(70));
+    lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, -20); // Remonte de 20px pour eviter la zone difficile
+    
+    // Set AZERTY Map
+    lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_TEXT_LOWER, kb_map_azerty_lc, kb_ctrl_azerty_lc_map);
+    lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_TEXT_UPPER, kb_map_azerty_uc, kb_ctrl_azerty_uc_map);
+    lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_SPECIAL, kb_map_spec, kb_ctrl_spec_map);
+    lv_keyboard_set_mode(kb, LV_KEYBOARD_MODE_TEXT_LOWER);
+
+    // Apply Styles
+    lv_obj_add_style(kb, &style_kb, LV_PART_ITEMS);
+    lv_obj_add_style(kb, &style_kb_main, LV_PART_MAIN);
+
+    lv_obj_add_event_cb(kb, kb_event_cb, LV_EVENT_ALL, NULL);
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+}
+
 // --- MAIN INIT ---
 void ui_linky_init() {
   style_init();
@@ -477,6 +718,7 @@ void ui_linky_init() {
   create_screen_week();
   create_screen_history();
   create_screen_info();
+  create_screen_wifi(); // Init de la page WiFi
 
   lv_scr_load(screen_meter); // Load Meter first
   current_page_index = 0;
@@ -487,8 +729,8 @@ void ui_linky_change_page(int direction) {
   printf("UI PAGE CHANGE CMD: %d\n", direction);
   current_page_index += direction;
 
-  if (current_page_index > 4) current_page_index = 0;
-  if (current_page_index < 0) current_page_index = 4;
+  if (current_page_index > 5) current_page_index = 0;
+  if (current_page_index < 0) current_page_index = 5;
 
   switch (current_page_index) {
     case 0: lv_scr_load_anim(screen_meter, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
@@ -496,8 +738,9 @@ void ui_linky_change_page(int direction) {
     case 2: lv_scr_load_anim(screen_week, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
     case 3: lv_scr_load_anim(screen_history, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
     case 4: lv_scr_load_anim(screen_info, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 5: lv_scr_load_anim(screen_wifi, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
   }
-}
+} // End change_page (added wifi case)
 
 // --- UPDATE LOOP ---
 void ui_linky_update(linky_data_t *data) {
