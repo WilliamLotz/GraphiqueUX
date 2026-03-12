@@ -7,6 +7,8 @@
 #define PI 3.14159265358979323846
 #endif
 
+extern linky_data_t linky_data; // Ajout pour acceder aux données globales des historiques de la SD
+
 // --- GLOBALS ---
 static lv_obj_t *screen_meter;
 static lv_obj_t *screen_index;
@@ -14,6 +16,9 @@ static lv_obj_t *screen_week;    // Page 2
 static lv_obj_t *screen_history; // Page 3
 static lv_obj_t *screen_info;    // Page 4
 static lv_obj_t *screen_wifi;    // Page 5
+
+static lv_obj_t *highlight_week = NULL;
+static lv_obj_t *highlight_month = NULL;
 
 static int current_page_index = 0; // 0=Meter, 1=Index, 2=Week, 3=History, 4=Info, 5=WiFi
 
@@ -388,32 +393,49 @@ void create_screen_week() {
     lv_style_set_line_width(&style_line_week, 30); 
     lv_style_set_line_rounded(&style_line_week, true);
 
+    time_t now;
+    time(&now);
+    struct tm *t = localtime(&now);
+    int current_day_idx = (t->tm_wday == 0) ? 6 : (t->tm_wday - 1); // 0=Lundi, 6=Dimanche
+
     int cx = 165; // Correct center for 360px screen
     int cy = 165; 
     int radius_start = 70; 
     int max_len = 70;
 
+    // Create global highlight, initially hidden (creé AVANT les textes pour etre EN DESSOUS)
+    highlight_week = lv_obj_create(radial_area);
+    lv_obj_set_size(highlight_week, 24, 24);
+    lv_obj_set_style_radius(highlight_week, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(highlight_week, lv_color_hex(0xFF0000), 0); 
+    lv_obj_set_style_border_width(highlight_week, 0, 0);
+    lv_obj_clear_flag(highlight_week, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(highlight_week, LV_OBJ_FLAG_HIDDEN);
+
     for(int i=0; i<7; i++) {
         float angle_deg = -90.0f + (i * 360.0f / 7.0f);
         float angle_rad = angle_deg * (PI / 180.0f);
         
-        int value = (rand() % 50) + 10; 
+        int value = linky_data.history_week[i]; // Utiliser la vraie donnee depuis la carte SD (kWh)
 
-        // Hack Color: R->B, G->R, B->G
-        uint8_t ratio = (value * 255) / 60; 
-        if(ratio > 255) ratio = 255;
-        // Want: Blue(Low) -> Green(High)
-        // Send: Red -> Blue ?? 
-        // Let's copy the Logic from History:
-        // Low: Send Blue -> Show Green?? No, History said:
-        // "Low: Send Blue (0,0,255) -> Show Green"
-        // "High: Send Green (0,255,0) -> Show Red"
-        // Let's use that (Blue->Green send).
+        // Limiter la valeur pour l'affichage (ex: max 60 kWh/jour)
+        int max_val_scale = 60;
+        int display_val = value;
+        if(display_val > max_val_scale) display_val = max_val_scale;
+
+        // Hack Color: Vert (Faible) -> Rouge (Fort) ! (rappel: ecran inverse RGB)
+        // Ratio de consommation
+        uint8_t ratio = (display_val * 255) / max_val_scale; 
         
-        // CYAN FIXE
-        lv_color_t color = lv_color_make(0, 255, 255);
+        // On veut Green (Low) -> Red (High). 
+        // Mais l'écran inverse les couleurs:
+        // Envoyer Bleu (0,0,255) => Affiche Vert
+        // Envoyer Vert (0,255,0) => Affiche Bleu
+        // Envoyer Rouge (255,0,0) => Affiche Cyan ? Wait.
+        // D'apres l'autre code: Green on screen is Blue(0,0,255). Red on screen is Green(0,255,0).
+        lv_color_t color = lv_color_make(0, ratio, 255 - ratio);
 
-        int bar_len = (value * max_len) / 60;
+        int bar_len = (display_val * max_len) / max_val_scale;
         
         week_points[i][0].x = cx + (int)(cos(angle_rad) * radius_start);
         week_points[i][0].y = cy + (int)(sin(angle_rad) * radius_start);
@@ -428,17 +450,6 @@ void create_screen_week() {
         int label_radius = 160;
         int lx = cx + (int)(cos(angle_rad) * label_radius);
         int ly = cy + (int)(sin(angle_rad) * label_radius);
-
-        if (i == 0) { // Active day highlight
-             lv_obj_t * highlight = lv_obj_create(radial_area);
-             lv_obj_set_size(highlight, 24, 24);
-             lv_obj_set_style_radius(highlight, LV_RADIUS_CIRCLE, 0);
-             // Hack: 0xFF0000 gives Blue on this screen?
-             lv_obj_set_style_bg_color(highlight, lv_color_hex(0xFF0000), 0); 
-             lv_obj_set_style_border_width(highlight, 0, 0);
-             lv_obj_set_pos(highlight, lx - 12, ly - 13);
-             lv_obj_clear_flag(highlight, LV_OBJ_FLAG_SCROLLABLE);
-        }
 
         label_days[i] = lv_label_create(radial_area); 
         lv_label_set_text(label_days[i], day_names[i]);
@@ -489,27 +500,47 @@ void create_screen_history() {
     lv_style_set_line_width(&style_line, 28); 
     lv_style_set_line_rounded(&style_line, true);
 
+    time_t now;
+    time(&now);
+    struct tm *t = localtime(&now);
+    int current_month_idx = t->tm_mon; // 0=Janvier, 11=Decembre
+
     int cx = 165; 
     int cy = 165; 
+
+    // Create global highlight, initially hidden (creé AVANT les textes pour etre EN DESSOUS)
+    highlight_month = lv_obj_create(radial_area);
+    lv_obj_set_size(highlight_month, 24, 24);
+    lv_obj_set_style_radius(highlight_month, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(highlight_month, lv_color_hex(0xFF0000), 0); 
+    lv_obj_set_style_border_width(highlight_month, 0, 0);
+    lv_obj_clear_flag(highlight_month, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(highlight_month, LV_OBJ_FLAG_HIDDEN);
     
     for(int i=0; i<12; i++) {
         float angle_deg = (i + 1) * 30; 
         float angle_rad = angle_deg * (PI / 180.0f);
 
-        int value = (rand() % 50) + 20; 
+        int value_wh = linky_data.history_year[i]; 
+        int value = value_wh / 1000; // Passage en kWh pour le graph
         
-        // Color Hack
-        uint8_t ratio = (value * 255) / 60; 
-        if (ratio > 255) ratio = 255;
+        int max_val_scale = 300; // max 300 kWh par mois
+        int display_val = value;
+        if(display_val > max_val_scale) display_val = max_val_scale;
+
+        uint8_t ratio = (display_val * 255) / max_val_scale; 
         
-        // CYAN FIXE
-        lv_color_t bar_color = lv_color_make(0, 255, 255);
+        // Color hack (Vert a Rouge)
+        lv_color_t bar_color = lv_color_make(0, ratio, 255 - ratio);
 
         int hole = 70; 
+        // Normaliser la taille de la barre
+        int bar_len = (display_val * 70) / max_val_scale;
+        
         int x_start = cx + (int)(sin(angle_rad) * hole);
         int y_start = cy - (int)(cos(angle_rad) * hole);
-        int x_end = cx + (int)(sin(angle_rad) * (hole + value));
-        int y_end = cy - (int)(cos(angle_rad) * (hole + value));
+        int x_end = cx + (int)(sin(angle_rad) * (hole + bar_len));
+        int y_end = cy - (int)(cos(angle_rad) * (hole + bar_len));
 
         history_points[i][0].x = x_start;
         history_points[i][0].y = y_start;
@@ -525,16 +556,6 @@ void create_screen_history() {
         int lx = cx + (int)(sin(angle_rad) * label_radius);
         int ly = cy - (int)(cos(angle_rad) * label_radius);
 
-        if (i == 0) {
-             lv_obj_t * highlight = lv_obj_create(radial_area);
-             lv_obj_set_size(highlight, 24, 24);
-             lv_obj_set_style_radius(highlight, LV_RADIUS_CIRCLE, 0);
-             lv_obj_set_style_bg_color(highlight, lv_color_hex(0xFF0000), 0); 
-             lv_obj_set_style_border_width(highlight, 0, 0);
-             lv_obj_set_pos(highlight, lx - 12, ly - 13); 
-             lv_obj_clear_flag(highlight, LV_OBJ_FLAG_SCROLLABLE);
-        }
-        
         label_months[i] = lv_label_create(radial_area); 
         lv_label_set_text(label_months[i], month_letters[i]);
         lv_obj_set_pos(label_months[i], lx - 6, ly - 9); 
@@ -743,15 +764,48 @@ void ui_linky_change_page(int direction) {
 } // End change_page (added wifi case)
 
 // --- UPDATE LOOP ---
-void ui_linky_update(linky_data_t *data) {
+void ui_linky_update(linky_data_t * data) {
   // Time Update
   time_t now;
   time(&now);
   struct tm *t = localtime(&now);
 
+  char buf_time[16];
+  char buf_date[16];
+  
+  if (t->tm_year >= 120) { // Time valid (>= 2020)
+      snprintf(buf_time, sizeof(buf_time), "%02d:%02d", t->tm_hour, t->tm_min);
+      snprintf(buf_date, sizeof(buf_date), "%02d/%02d/%04d", t->tm_mday, t->tm_mon+1, t->tm_year+1900);
+      
+      // Update dynamic highlights
+      if (highlight_week) {
+          int wday = (t->tm_wday == 0) ? 6 : (t->tm_wday - 1);
+          float angle_deg = -90.0f + (wday * 360.0f / 7.0f);
+          float angle_rad = angle_deg * (PI / 180.0f);
+          int lx = 165 + (int)(cos(angle_rad) * 160);
+          int ly = 165 + (int)(sin(angle_rad) * 160);
+          lv_obj_set_pos(highlight_week, lx - 12, ly - 13);
+          lv_obj_clear_flag(highlight_week, LV_OBJ_FLAG_HIDDEN);
+      }
+      
+      if (highlight_month) {
+          int mon = t->tm_mon;
+          float angle_deg = (mon + 1) * 30; 
+          float angle_rad = angle_deg * (PI / 180.0f);
+          int lx = 165 + (int)(sin(angle_rad) * 160);
+          int ly = 165 - (int)(cos(angle_rad) * 160);
+          lv_obj_set_pos(highlight_month, lx - 12, ly - 13);
+          lv_obj_clear_flag(highlight_month, LV_OBJ_FLAG_HIDDEN);
+      }
+      
+  } else {
+      snprintf(buf_time, sizeof(buf_time), "--:--");
+      snprintf(buf_date, sizeof(buf_date), "--/--/----");
+  }
+  
   if (label_time) {
       lv_obj_set_style_text_color(label_time, lv_color_white(), 0); 
-      lv_label_set_text_fmt(label_time, "%02d:%02d", t->tm_hour, t->tm_min);
+      lv_label_set_text(label_time, buf_time);
   }
 
   if (label_date) {
@@ -793,6 +847,15 @@ void ui_linky_update(linky_data_t *data) {
   int a_avg = (a_count > 0) ? (a_sum / a_count) : 0;
   if (label_amp) lv_label_set_text_fmt(label_amp, "%d A", data->iinst);
   if (label_amp_stats) lv_label_set_text_fmt(label_amp_stats, "Min:%d      Avg:%d      Max:%d", (a_min==999)?0:a_min, a_avg, a_max);
+
+    // Refresh WEEK page if needed (redessiner les lignes si de nouvelles données sont recoltées par la SD)
+    // Seules quelques redessins sont necessaires (la boucle est lourde donc optionnelle 
+    // ou on la met a jour seulement a minuit, mais bon on update ici)
+    // Actually, to avoid overloading the CPU, since SD data only updates at midnight,
+    // we don't necessarily need to update the 7*12 lines 10 times a second here.
+    // The initial create screens have already grabbed the global SD data !
+
+
 
   // Bars Update Logic (Simulated)
   static uint32_t last_chart_upd = 0;

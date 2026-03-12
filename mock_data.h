@@ -13,6 +13,8 @@ typedef struct {
     char option_tarif[10];  // "BASE" ou "HP.."
     char mot_etat[16];      // Message d'état (Encager to 16)
     uint8_t voltage;        // Tension (simulée)
+    uint16_t history_week[7]; // Conso des 7 derniers jours (Wh)
+    uint32_t history_year[12]; // Conso des 12 derniers mois (Wh)
 } linky_data_t;
 
 #endif

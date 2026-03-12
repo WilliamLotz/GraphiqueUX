@@ -21,17 +21,20 @@
 #include <ArduinoJson.h>  
 #include <time.h>
 #include <EEPROM.h> 
+#include "FS.h"
+#include "SD_MMC.h"
 
 // EEPROM Config
-#define EEPROM_SIZE 128
-struct WifiConfig {
+#define EEPROM_SIZE 256
+struct AppConfig {
     char ssid[32];
     char pwd[32];
     uint8_t initialized; // 0xA5 if valid
+    linky_data_t saved_data;
 };
-WifiConfig wifi_conf;
+AppConfig app_conf;
 
-const char* mqtt_server = "192.168.1.100";
+const char* mqtt_server = "test.mosquitto.org";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -82,13 +85,214 @@ void update_mock_data() {
 #ifdef ENABLE_REAL_DATA
 
 
+bool mqtt_has_data = false;
+
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
-  // Parsing MQTT...
+  Serial.print("Message MQTT recu [");
+  Serial.print(topic);
+  Serial.print("] ");
+  
+  String message;
+  for (unsigned int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+  Serial.println(message);
+
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument doc;
+#else
+  StaticJsonDocument<512> doc;
+#endif
+
+  DeserializationError error = deserializeJson(doc, message);
+
+  if (error) {
+    Serial.print("Erreur JSON: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  linky_data_t old_data = linky_data;
+
+  if (doc.containsKey("papp")) linky_data.papp = doc["papp"];
+  if (doc.containsKey("base")) linky_data.index_base = doc["base"];
+  if (doc.containsKey("hp")) linky_data.index_hp = doc["hp"];
+  if (doc.containsKey("hc")) linky_data.index_hc = doc["hc"];
+  if (doc.containsKey("iinst")) linky_data.iinst = doc["iinst"];
+  if (doc.containsKey("voltage")) linky_data.voltage = doc["voltage"];
+
+ // "C:\Program Files\mosquitto\mosquitto_pub.exe" -h test.mosquitto.org -t "lotz/home/linky/status" -m "{\"papp\": 3000, \"voltage\": 236, \"iinst\": 5}"
+  
+  mqtt_has_data = true;
+
+  // Sauvegarder dans la mémoire mais on se limite à une fois toutes les 60 secondes pour ne pas griller la mémoire Flash
+  static uint32_t last_eeprom_save = 0;
+  if (memcmp(&old_data, &linky_data, sizeof(linky_data_t)) != 0) {
+      if (millis() - last_eeprom_save > 60000) {
+          app_conf.saved_data = linky_data;
+          EEPROM.put(0, app_conf);
+          EEPROM.commit();
+          last_eeprom_save = millis();
+          Serial.println("Donnees Linky sauvegardees en EEPROM");
+      }
+  }
 }
+
 void reconnect() {
-   // Reconnect Loop... (A completer si besoin)
+  static uint32_t last_reconnect_attempt = 0;
+  if (!client.connected() && (millis() - last_reconnect_attempt > 5000)) {
+    Serial.print("Connexion au broker MQTT...");
+    String clientId = "ESP32-Linky-";
+    clientId += String(random(0xffff), HEX);
+    
+    if (client.connect(clientId.c_str())) {
+      Serial.println("Connecté!");
+      client.subscribe("lotz/home/linky/status");
+    } else {
+      Serial.print("Echec, rc=");
+      Serial.print(client.state());
+      Serial.println(" nouvel essai dans 5s");
+    }
+    last_reconnect_attempt = millis();
+  }
 }
 #endif
+
+
+// --- CARTE SD (Historique) ---
+bool sd_card_ok = false;
+
+// Lit le CSV et reconstruit les tableaux history_week et history_year
+void read_history_from_sd() {
+    if (!SD_MMC.exists("/historique_linky.csv")) return;
+    
+    File f = SD_MMC.open("/historique_linky.csv", FILE_READ);
+    if (!f) return;
+
+    // Reset des tableaux
+    for (int i=0; i<7; i++) linky_data.history_week[i] = 0;
+    for (int i=0; i<12; i++) linky_data.history_year[i] = 0;
+
+    String header = f.readStringUntil('\n'); // Passer l'entête
+    
+    uint32_t last_index = 0;
+    
+    while(f.available()) {
+        String line = f.readStringUntil('\n');
+        line.trim();
+        if (line.length() == 0) continue;
+        
+        // Parsing basique: 2026-02-28,12500000,0,0,3000,5,45,236
+        int first_comma = line.indexOf(',');
+        if (first_comma == -1) continue;
+        String date_str = line.substring(0, first_comma);
+        
+        int second_comma = line.indexOf(',', first_comma+1);
+        if (second_comma == -1) continue;
+        String base_str = line.substring(first_comma+1, second_comma);
+        uint32_t current_index = base_str.toInt();
+        
+        // Si on a un index precedent, la conso du jour est la difference
+        if (last_index > 0 && current_index >= last_index) {
+            uint32_t conso_jour_wh = current_index - last_index;
+            
+            // Extraire Mois (01-12)
+            int dash1 = date_str.indexOf('-');
+            int dash2 = date_str.lastIndexOf('-');
+            if (dash1 != -1 && dash2 != -1) {
+                int year = date_str.substring(0, dash1).toInt();
+                int month = date_str.substring(dash1+1, dash2).toInt();
+                int day = date_str.substring(dash2+1).toInt();
+                
+                // Ajouter à l'année
+                if (month >= 1 && month <= 12) {
+                    linky_data.history_year[month - 1] += conso_jour_wh;
+                }
+                
+                // Calcul empirique du jour de la semaine pour Zeller ou juste mettre dans week
+                // Pour simplifier et ne pas implémenter Zeller en entier ici, 
+                // on va remplir le dernier mois dans l'année. 
+                // Dans la réalité, the week history is complex to map strictly to "last 7 days" without full UNIX timestamps.
+                // On met une implémentation approchée (jour % 7 pour l'instant) ou juste laisser LVGL gerer une pseudo-data si trop vieux
+                
+                // Calcul Jour de la semaine (0=Dimanche, 1=Lundi...) // Algo de Zeller
+                if (month < 3) { month += 12; year -= 1; }
+                int K = year % 100; int J = year / 100;
+                int h = (day + 13*(month+1)/5 + K + K/4 + J/4 + 5*J) % 7;
+                // convert to 0=Lundi, 6=Dimanche
+                int wday = ((h + 5) % 7); 
+                
+                // On ecrase le jour de la semaine (ca gardera les 7 derniers jours par rotation)
+                linky_data.history_week[wday] = (uint16_t)(conso_jour_wh / 1000); // En kWh pour l'UI
+                
+                // Note : Pour l'année on garde en Wh, on divisera dans l'UI
+            }
+        }
+        last_index = current_index;
+    }
+    f.close();
+    Serial.println("Historique CSV lu depuis la carte SD.");
+}
+
+void init_sd_card() {
+    // Broches pour la carte SD du module Waveshare (D3=2, CMD=3, CLK=4, D0=5, D1=6, D2=42)
+    SD_MMC.setPins(4, 3, 5, 6, 42, 2); 
+    
+    if(!SD_MMC.begin("/sdcard", false, true)) { // format_if_empty = true
+        Serial.println("Erreur Montage Carte SD");
+        sd_card_ok = false;
+        return;
+    }
+    uint8_t cardType = SD_MMC.cardType();
+    if(cardType == CARD_NONE){
+        Serial.println("Aucune Carte SD n'est inseree");
+        sd_card_ok = false;
+        return;
+    }
+    Serial.printf("Carte SD OK ! Taille: %lluMB\n", SD_MMC.cardSize() / (1024 * 1024));
+    sd_card_ok = true;
+    
+    // Creer fichier historique avec entetes si absent
+    if (!SD_MMC.exists("/historique_linky.csv")) {
+        File f = SD_MMC.open("/historique_linky.csv", FILE_WRITE);
+        if (f) {
+            f.println("Date,Base(Wh),HP(Wh),HC(Wh),Papp(VA),Iinst(A),Isousc(A),Voltage(V)");
+            f.close();
+            Serial.println("Fichier historique CSV initialise.");
+        }
+    } else {
+        read_history_from_sd(); // Charger l'historique en memoire
+    }
+}
+
+void log_daily_to_sd() {
+    if (!sd_card_ok || !mqtt_has_data) return;
+    
+    static int last_logged_day = -1;
+    time_t now;
+    time(&now);
+    struct tm *t = localtime(&now);
+    
+    // Ne pas logger si l'heure n'est pas encore synchro
+    if (t->tm_year < 120) return; 
+    
+    // On log la conso à chaque changement de jour (à minuit pile) ou au premier demarrage si le jour a changé
+    if (last_logged_day != -1 && t->tm_mday != last_logged_day) {
+        File f = SD_MMC.open("/historique_linky.csv", FILE_APPEND);
+        if (f) {
+            char log_line[128];
+            snprintf(log_line, sizeof(log_line), "%04d-%02d-%02d,%lu,%lu,%lu,%u,%u,%u,%u", 
+                     t->tm_year+1900, t->tm_mon+1, t->tm_mday, 
+                     linky_data.index_base, linky_data.index_hp, linky_data.index_hc,
+                     linky_data.papp, linky_data.iinst, linky_data.isousc, linky_data.voltage);
+            f.println(log_line);
+            f.close();
+            Serial.print("Historique sauvegarde sur SD : ");
+            Serial.println(log_line);
+        }
+    }
+    last_logged_day = t->tm_mday;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -98,7 +302,8 @@ void setup() {
 #ifdef ENABLE_REAL_DATA
     Serial.println("MODE WIFI ACTIF");
 
-    // client.setServer...
+    client.setServer(mqtt_server, 1883);
+    client.setCallback(mqtt_callback);
     configTime(3600, 3600, "pool.ntp.org");
 #else
     Serial.println("MODE MOCK ACTIF");
@@ -132,20 +337,27 @@ void setup() {
   // 4. Init UI
   ui_linky_init();
 
-  // Load WiFi from EEPROM
+  // Load Flash memory from EEPROM
   EEPROM.begin(EEPROM_SIZE);
-  EEPROM.get(0, wifi_conf);
-  if (wifi_conf.initialized == 0xA5) {
+  EEPROM.get(0, app_conf);
+  if (app_conf.initialized == 0xA5) {
       Serial.println("EEPROM WiFi Found:");
-      Serial.println(wifi_conf.ssid);
+      Serial.println(app_conf.ssid);
       // Auto-connect on boot
-      strcpy(wifi_ssid, wifi_conf.ssid);
-      strcpy(wifi_pwd, wifi_conf.pwd);
+      strcpy(wifi_ssid, app_conf.ssid);
+      strcpy(wifi_pwd, app_conf.pwd);
       wifi_connect_requested = true; // Trigger connection
+      
+      // Restaurer les dernières données Linky connues
+      linky_data = app_conf.saved_data;
+      mqtt_has_data = true; // Bloquer le mock, utiliser les vraies données fixes en attendant le vrai message
   } else {
       Serial.println("No WiFi saved in EEPROM.");
   }
   
+  // 5. Init SD Card
+  init_sd_card();
+
   Serial.println("Setup done.");
 }
 
@@ -171,11 +383,20 @@ void loop() {
   
   // 3. Data Flow
 #ifdef ENABLE_REAL_DATA
+  if (WiFi.status() == WL_CONNECTED) {
+      if (!client.connected()) {
+          reconnect();
+      }
+      client.loop(); // Traite les messages MQTT entrants
+  }
+
   if (millis() - last_update > 500) { 
-      // HYBRID DEMO: Mock Data even with WiFi enabled
-      update_mock_data();
+      if (!mqtt_has_data) {
+          update_mock_data(); // Valeurs fictives tant qu'on n'a pas recu de vrai message MQTT
+      }
       ui_linky_update(&linky_data);
       last_update = millis();
+      log_daily_to_sd(); // Verifie s'il faut logger (changement de date)
   }
 #else
   // Mock Flow
@@ -188,6 +409,7 @@ void loop() {
   
   // 4. WiFi Handler (Dynamic)
   if (wifi_connect_requested) {
+
       wifi_connect_requested = false;
       
       // Trim potential newlines from UI input
@@ -217,10 +439,10 @@ void loop() {
           Serial.println(WiFi.localIP());
           
           // Save to EEPROM
-          strcpy(wifi_conf.ssid, ssid_str.c_str());
-          strcpy(wifi_conf.pwd, pwd_str.c_str());
-          wifi_conf.initialized = 0xA5;
-          EEPROM.put(0, wifi_conf);
+          strcpy(app_conf.ssid, ssid_str.c_str());
+          strcpy(app_conf.pwd, pwd_str.c_str());
+          app_conf.initialized = 0xA5;
+          EEPROM.put(0, app_conf);
           EEPROM.commit();
           Serial.println("WiFi Saved to EEPROM!");
 
