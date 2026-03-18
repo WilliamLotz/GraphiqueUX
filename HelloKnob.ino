@@ -80,6 +80,27 @@ void maj_donnees_fictives() {
     if ((rand() % 100) < 5) donnees_linky.index_base++;
 }
 
+// Remplit les historiques avec des données aléatoires s'ils sont vides
+void generer_historique_aleatoire() {
+    bool est_vide = true;
+    for (int i = 0; i < 12; i++) {
+        if (donnees_linky.historique_annee[i] != 0) {
+            est_vide = false;
+            break;
+        }
+    }
+    
+    if (est_vide) {
+        Serial.println("Génération d'un historique aléatoire (Semaine & Année)...");
+        for (int i = 0; i < 7; i++) {
+            donnees_linky.historique_semaine[i] = 15 + (rand() % 40); // 15 à 55 kWh
+        }
+        for (int i = 0; i < 12; i++) {
+            donnees_linky.historique_annee[i] = (120 + (rand() % 160)) * 1000UL; // 120 à 280 kWh (en Wh)
+        }
+    }
+}
+
 #ifdef ENABLE_REAL_DATA
 
 
@@ -326,6 +347,8 @@ void setup() {
   }
   
   initialisation_carte_sd();
+
+  generer_historique_aleatoire();
 
   Serial.println("Setup done."); // Fin de l'initialisation.
 }
