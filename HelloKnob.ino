@@ -346,7 +346,7 @@ void setup() {
   
   initialisation_carte_sd();
 
-  generer_historique_aleatoire();
+  // generer_historique_aleatoire(); // Désactivé pour afficher le réel état vide après suppression SD
 
   interface_linky_initialisation();
 
