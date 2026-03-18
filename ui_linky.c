@@ -177,20 +177,42 @@ void create_screen_accueil() {
     lv_obj_clear_flag(ecran_accueil, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_pad_all(ecran_accueil, 0, 0);
     
-    // Titre pur texte anti-aliasé (haute définition, non pixelisé)
+// Fonction pour animer la barre de démarrage
+static void set_barre_valeur(void * bar, int32_t v) {
+    lv_bar_set_value(bar, v, LV_ANIM_OFF);
+}
+
+void create_screen_accueil() {
+    ecran_accueil = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(ecran_accueil, lv_color_black(), 0);
+    lv_obj_clear_flag(ecran_accueil, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(ecran_accueil, 0, 0);
+    
+    // Titre pur texte anti-aliasé
     lv_obj_t * titre = lv_label_create(ecran_accueil);
     lv_label_set_text(titre, "Bienvenue sur le\nKnobTouch !");
     lv_obj_set_style_text_align(titre, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(titre);
-    lv_obj_set_style_text_font(titre, &lv_font_montserrat_30, 0); // Super résolution
+    lv_obj_align(titre, LV_ALIGN_CENTER, 0, -20); // Remonté très légèrement pour laisser place à la barre
+    lv_obj_set_style_text_font(titre, &lv_font_montserrat_30, 0); 
     lv_obj_set_style_text_color(titre, lv_color_white(), 0);
     
-    // Sous-titre (sans accent pour éviter le carré manquant de lvgl, et police 16 native)
-    lv_obj_t * sous_titre = lv_label_create(ecran_accueil);
-    lv_label_set_text(sous_titre, "Demarrage en cours...");
-    lv_obj_set_style_text_color(sous_titre, lv_color_make(150, 150, 150), 0);
-    lv_obj_align(sous_titre, LV_ALIGN_BOTTOM_MID, 0, -40);
-    lv_obj_set_style_text_font(sous_titre, &lv_font_montserrat_16, 0);
+    // Remplacement du texte "Démarrage" raté par une belle barre de chargement animée !
+    lv_obj_t * barre = lv_bar_create(ecran_accueil);
+    lv_obj_set_size(barre, 160, 6);
+    lv_obj_align(barre, LV_ALIGN_BOTTOM_MID, 0, -60);
+    lv_obj_set_style_bg_color(barre, lv_color_make(40, 40, 40), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(barre, lv_color_make(0, 150, 255), LV_PART_INDICATOR); // Bleu stylisé
+    lv_obj_set_style_radius(barre, 3, LV_PART_MAIN);
+    lv_obj_set_style_radius(barre, 3, LV_PART_INDICATOR);
+
+    // Lancement de l'animation de 0 à 100% sur exactement les 5 secondes d'attente
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, barre);
+    lv_anim_set_values(&a, 0, 100);
+    lv_anim_set_exec_cb(&a, set_barre_valeur);
+    lv_anim_set_time(&a, 4800); // 4.8s pour finir un tout petit peu avant le changement d'écran
+    lv_anim_start(&a);
 
     // Timer de 5 secondes
     timer_accueil = lv_timer_create(rappel_fin_accueil, 5000, NULL);
