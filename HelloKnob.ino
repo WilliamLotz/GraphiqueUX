@@ -362,6 +362,18 @@ void loop() {
           SD_MMC.remove("/historique_linky.csv");
           Serial.println("Fichier d'historique de la carte SD efface.");
       }
+      
+      // Vider également l'historique en mémoire (qui pourrait être restauré par l'EEPROM au redémarrage)
+      for(int i=0; i<7; i++) donnees_linky.historique_semaine[i] = 0;
+      for(int i=0; i<12; i++) donnees_linky.historique_annee[i] = 0;
+      
+      if (conf_app.initialise == 0xA5) {
+          conf_app.donnees_sauvegardees = donnees_linky;
+          EEPROM.put(0, conf_app);
+          EEPROM.commit();
+          Serial.println("EEPROM mise a zero pour l'historique.");
+      }
+
       Serial.println("Redemarrage de l'ESP en cours...");
       delay(500);
       ESP.restart();
