@@ -270,10 +270,11 @@ void create_screen_meter() {
 }
 
 // Crée un conteneur style "carte" pour l'écran des index
+// Crée un conteneur style "carte" pour l'écran des index
 static lv_obj_t* creer_carte_index(lv_obj_t * parent, const char* titre_carte, lv_color_t couleur, lv_obj_t** label_valeur) {
     lv_obj_t * carte = lv_obj_create(parent);
-    lv_obj_set_size(carte, 320, 75);
-    lv_obj_set_style_radius(carte, 15, 0);
+    lv_obj_set_size(carte, 220, 55);
+    lv_obj_set_style_radius(carte, 12, 0);
     lv_obj_set_style_bg_color(carte, lv_color_make(20, 20, 20), 0); // Gris très foncé
     lv_obj_set_style_bg_opa(carte, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(carte, 2, 0);
@@ -284,13 +285,13 @@ static lv_obj_t* creer_carte_index(lv_obj_t * parent, const char* titre_carte, l
     lv_label_set_text(titre_lbl, titre_carte);
     lv_obj_set_style_text_color(titre_lbl, couleur, 0);
     lv_obj_align(titre_lbl, LV_ALIGN_LEFT_MID, 5, 0);
-    lv_obj_set_style_text_font(titre_lbl, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(titre_lbl, &lv_font_montserrat_16, 0);
 
     *label_valeur = lv_label_create(carte);
     lv_label_set_text(*label_valeur, "-----");
     lv_obj_set_style_text_color(*label_valeur, lv_color_white(), 0);
     lv_obj_align(*label_valeur, LV_ALIGN_RIGHT_MID, -5, 0);
-    lv_obj_set_style_text_font(*label_valeur, &lv_font_montserrat_30, 0); 
+    lv_obj_set_style_text_font(*label_valeur, &lv_font_montserrat_20, 0); 
 
     return carte;
 }
@@ -304,19 +305,19 @@ void create_screen_index() {
   lv_obj_t *titre = lv_label_create(ecran_index);
   lv_label_set_text(titre, "INDEX kWh");
   lv_obj_set_style_text_color(titre, lv_color_white(), 0);
-  lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 15);
-  lv_obj_set_style_text_font(titre, &lv_font_montserrat_30, 0);
+  lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 20);
+  lv_obj_set_style_text_font(titre, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_letter_space(titre, 2, 0); 
 
   // Création des cartes pour chaque indicateur
-  lv_obj_t * carte_base = creer_carte_index(ecran_index, "BASE", lv_color_make(0, 150, 255), &etiquette_index_base); // Bleu
-  lv_obj_align(carte_base, LV_ALIGN_TOP_MID, 0, 80);
+  lv_obj_t * carte_base = creer_carte_index(ecran_index, "TOTAL", lv_color_make(0, 150, 255), &etiquette_index_base); // Bleu
+  lv_obj_align(carte_base, LV_ALIGN_TOP_MID, 0, 70);
 
   lv_obj_t * carte_hp = creer_carte_index(ecran_index, "H. PLEINES", lv_color_make(255, 50, 50), &etiquette_index_hp);  // Rouge
-  lv_obj_align(carte_hp, LV_ALIGN_TOP_MID, 0, 170);
+  lv_obj_align(carte_hp, LV_ALIGN_TOP_MID, 0, 135);
 
   lv_obj_t * carte_hc = creer_carte_index(ecran_index, "H. CREUSES", lv_color_make(50, 255, 50), &etiquette_index_hc);   // Vert
-  lv_obj_align(carte_hc, LV_ALIGN_TOP_MID, 0, 260);
+  lv_obj_align(carte_hc, LV_ALIGN_TOP_MID, 0, 200);
 }
 
 // Crée l'écran d'informations (Page 4) affichant les statistiques de tension et d'intensité.
