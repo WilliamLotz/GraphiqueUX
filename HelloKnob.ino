@@ -63,8 +63,8 @@ void IRAM_ATTR majEncodeur() {
 
 // Instance globale stockant l'état simulé ou réel du compteur Linky.
 donnees_linky_t donnees_linky = {
-    .papp = 0, .iinst = 0, .index_base = 12345, .index_hp = 5600, .index_hc = 4200,
-    .isousc = 45, .option_tarif = "BASE", .mot_etat = "PAS D'ETAT", .tension = 230
+    .papp = 0, .iinst = 0, .index_base = 0, .index_hp = 0, .index_hc = 0,
+    .isousc = 0, .option_tarif = "BASE", .mot_etat = "ATTENTE", .tension = 0
 };
 
 // Met à jour les valeurs de consommation du compteur avec des données semi-aléatoires (mode Mock).
@@ -360,12 +360,19 @@ void loop() {
       Serial.println("Demande d'effacement SD recue");
       if (carte_sd_ok) {
           SD_MMC.remove("/historique_linky.csv");
-          Serial.println("Fichier d'historique de la carte SD efface.");
+          // Forçage de l'effacement par l'écrasement immédiat avec un fichier vide
+          File f = SD_MMC.open("/historique_linky.csv", FILE_WRITE);
+          if (f) {
+              f.println("Date,Base(Wh),HP(Wh),HC(Wh),Papp(VA),Iinst(A),Isousc(A),Voltage(V)");
+              f.close();
+              Serial.println("Fichier ecrase avec succes.");
+          }
       }
       
-      // Vider également l'historique en mémoire (qui pourrait être restauré par l'EEPROM au redémarrage)
-      for(int i=0; i<7; i++) donnees_linky.historique_semaine[i] = 0;
-      for(int i=0; i<12; i++) donnees_linky.historique_annee[i] = 0;
+      // Vider totalement l'état en mémoire
+      donnees_linky = {0};
+      strcpy(donnees_linky.option_tarif, "BASE");
+      strcpy(donnees_linky.mot_etat, "EFFACE");
       
       if (conf_app.initialise == 0xA5) {
           conf_app.donnees_sauvegardees = donnees_linky;
@@ -375,7 +382,8 @@ void loop() {
       }
 
       Serial.println("Redemarrage de l'ESP en cours...");
-      delay(500);
+      Serial.flush();
+      delay(1000);
       ESP.restart();
   }
 
