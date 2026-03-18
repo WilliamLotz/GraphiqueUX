@@ -20,6 +20,7 @@ void interface_linky_actualiser(donnees_linky_t *data);
 extern char wifi_reseau[32];
 extern char wifi_mdp[32];
 extern volatile bool connexion_wifi_demandee;
+extern volatile bool effacement_sd_demande;
 
 // Modifie le texte et la couleur du label de statut WiFi sur la page de configuration.
 void interface_linky_statut_wifi(const char* msg, bool success);

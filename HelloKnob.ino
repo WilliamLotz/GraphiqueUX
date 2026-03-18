@@ -355,6 +355,18 @@ void setup() {
 
 // Boucle principale qui maintient la connexion WiFi/MQTT, met à jour l'UID LVGL et synchronise les données affichées.
 void loop() {
+  if (effacement_sd_demande) {
+      effacement_sd_demande = false;
+      Serial.println("Demande d'effacement SD recue");
+      if (carte_sd_ok) {
+          SD_MMC.remove("/historique_linky.csv");
+          Serial.println("Fichier d'historique de la carte SD efface.");
+      }
+      Serial.println("Redemarrage de l'ESP en cours...");
+      delay(500);
+      ESP.restart();
+  }
+
   if (requete_evenement_bouton != 0) {
       Serial.print("Knob Event: "); Serial.println(requete_evenement_bouton);
       // interface_linky_changer_page(requete_evenement_bouton); // Désactivé: Remplacé par les gestes tactiles

@@ -16,6 +16,9 @@ static lv_obj_t *ecran_semaine;    // Page 2
 static lv_obj_t *ecran_historique; // Page 3
 static lv_obj_t *ecran_info;    // Page 4
 static lv_obj_t *ecran_wifi;    // Page 5
+static lv_obj_t *ecran_reset_sd; // Page 6
+
+volatile bool effacement_sd_demande = false;
 
 static lv_obj_t *surbrillance_semaine = NULL;
 static lv_obj_t *surbrillance_mois = NULL;
@@ -751,6 +754,45 @@ void create_screen_wifi() {
     lv_obj_add_flag(clavier_virtuel, LV_OBJ_FLAG_HIDDEN);
 }
 
+static void rappel_bouton_reset_sd(lv_event_t * e) {
+    effacement_sd_demande = true;
+    lv_obj_t * btn = lv_event_get_target(e);
+    lv_obj_t * label = lv_obj_get_child(btn, 0);
+    if(label) lv_label_set_text(label, "Redemarrage...");
+    lv_obj_set_style_bg_color(btn, lv_color_make(100, 100, 100), 0);
+}
+
+void create_screen_reset_sd() {
+    ecran_reset_sd = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(ecran_reset_sd, lv_color_black(), 0);
+    
+    lv_obj_t * titre = lv_label_create(ecran_reset_sd);
+    lv_label_set_text(titre, "EFFACER SD");
+    lv_obj_set_style_text_color(titre, lv_color_white(), 0);
+    lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 40);
+    lv_obj_set_style_text_font(titre, &lv_font_montserrat_30, 0);
+
+    lv_obj_t * desc = lv_label_create(ecran_reset_sd);
+    lv_label_set_text(desc, "Supprimer l'historique\nde consommation ?");
+    lv_obj_set_style_text_color(desc, lv_color_make(200, 200, 200), 0);
+    lv_obj_set_style_text_align(desc, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(desc, LV_ALIGN_CENTER, 0, -20);
+    lv_obj_set_style_text_font(desc, &lv_font_montserrat_20, 0);
+
+    lv_obj_t * btn_reset = lv_btn_create(ecran_reset_sd);
+    lv_obj_set_size(btn_reset, 180, 50);
+    lv_obj_align(btn_reset, LV_ALIGN_CENTER, 0, 60);
+
+    lv_obj_set_style_bg_color(btn_reset, lv_color_make(255, 50, 50), 0); // Rouge
+    lv_obj_set_style_radius(btn_reset, 10, 0);
+    lv_obj_add_event_cb(btn_reset, rappel_bouton_reset_sd, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * label_btn = lv_label_create(btn_reset);
+    lv_label_set_text(label_btn, "SUPPRIMER");
+    lv_obj_set_style_text_font(label_btn, &lv_font_montserrat_20, 0);
+    lv_obj_center(label_btn);
+}
+
 static void rappel_glissement_ecran(lv_event_t * e) {
     lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
     if(dir == LV_DIR_LEFT) {
@@ -770,6 +812,7 @@ void interface_linky_initialisation() {
   create_screen_history();
   create_screen_info();
   create_screen_wifi(); // Initialisation de la page WiFi
+  create_screen_reset_sd(); // Initialisation de la page reset SD
 
   lv_obj_add_event_cb(ecran_jauge, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
   lv_obj_clear_flag(ecran_jauge, LV_OBJ_FLAG_SCROLLABLE);
@@ -789,6 +832,9 @@ void interface_linky_initialisation() {
   lv_obj_add_event_cb(ecran_wifi, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
   lv_obj_clear_flag(ecran_wifi, LV_OBJ_FLAG_SCROLLABLE);
 
+  lv_obj_add_event_cb(ecran_reset_sd, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
+  lv_obj_clear_flag(ecran_reset_sd, LV_OBJ_FLAG_SCROLLABLE);
+
   lv_scr_load(ecran_jauge); // Charger le compteur en premier
   index_page_actuelle = 0;
 }
@@ -798,8 +844,8 @@ void interface_linky_changer_page(int direction) {
   printf("UI PAGE CHANGE CMD: %d\n", direction);
   index_page_actuelle += direction;
 
-  if (index_page_actuelle > 5) index_page_actuelle = 0;
-  if (index_page_actuelle < 0) index_page_actuelle = 5;
+  if (index_page_actuelle > 6) index_page_actuelle = 0;
+  if (index_page_actuelle < 0) index_page_actuelle = 6;
 
   lv_scr_load_anim_t anim_type = (direction > 0) ? LV_SCR_LOAD_ANIM_MOVE_LEFT : LV_SCR_LOAD_ANIM_MOVE_RIGHT;
   if (direction == 0) anim_type = LV_SCR_LOAD_ANIM_NONE;
@@ -811,6 +857,7 @@ void interface_linky_changer_page(int direction) {
     case 3: lv_scr_load_anim(ecran_historique, anim_type, 300, 0, false); break;
     case 4: lv_scr_load_anim(ecran_info, anim_type, 300, 0, false); break;
     case 5: lv_scr_load_anim(ecran_wifi, anim_type, 300, 0, false); break;
+    case 6: lv_scr_load_anim(ecran_reset_sd, anim_type, 300, 0, false); break;
   }
 } // Fin de change_page (cas wifi ajouté)
 
