@@ -159,6 +159,61 @@ void style_init() {
   lv_style_set_radius(&style_clavier_principal, 0);
 }
 
+// Ecran d'accueil
+static lv_obj_t * ecran_accueil;
+static lv_timer_t * timer_accueil;
+
+static void rappel_fin_accueil(lv_timer_t * timer) {
+    lv_timer_del(timer);
+    
+    // Charger l'écran de la jauge avec un fondu de 800ms
+    // Le paramètre 'true' supprime l'écran d'accueil de la mémoire pour économiser la RAM
+    lv_scr_load_anim(ecran_jauge, LV_SCR_LOAD_ANIM_FADE_ON, 800, 0, true);
+}
+
+void create_screen_accueil() {
+    ecran_accueil = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(ecran_accueil, lv_color_black(), 0);
+    lv_obj_clear_flag(ecran_accueil, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Effet visuel : anneau dégradé dynamique neon
+    lv_obj_t * cercle = lv_obj_create(ecran_accueil);
+    lv_obj_set_size(cercle, 180, 180);
+    lv_obj_center(cercle);
+    lv_obj_set_style_radius(cercle, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(cercle, lv_color_make(0, 150, 255), 0); // Bleu ciel
+    lv_obj_set_style_bg_grad_color(cercle, lv_color_make(200, 0, 255), 0); // Rose
+    lv_obj_set_style_bg_grad_dir(cercle, LV_GRAD_DIR_VER, 0);
+    lv_obj_set_style_border_width(cercle, 0, 0);
+    
+    // Cercle intérieur noir
+    lv_obj_t * cercle_interieur = lv_obj_create(cercle);
+    lv_obj_set_size(cercle_interieur, 160, 160);
+    lv_obj_center(cercle_interieur);
+    lv_obj_set_style_radius(cercle_interieur, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(cercle_interieur, lv_color_black(), 0);
+    lv_obj_set_style_border_width(cercle_interieur, 0, 0);
+
+    // Titre de bienvenue
+    lv_obj_t * label = lv_label_create(cercle_interieur);
+    lv_label_set_text(label, "BIENVENUE");
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_center(label);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(label, lv_color_make(255, 255, 255), 0);
+    lv_obj_set_style_text_letter_space(label, 2, 0);
+    
+    // Sous-titre
+    lv_obj_t * sous_titre = lv_label_create(ecran_accueil);
+    lv_label_set_text(sous_titre, "Demarrage en cours...");
+    lv_obj_set_style_text_color(sous_titre, lv_color_make(150, 150, 150), 0);
+    lv_obj_align(sous_titre, LV_ALIGN_BOTTOM_MID, 0, -30);
+    lv_obj_set_style_text_font(sous_titre, &lv_font_montserrat_16, 0);
+
+    // Timer de 5 secondes
+    timer_accueil = lv_timer_create(rappel_fin_accueil, 5000, NULL);
+}
+
 // Crée l'écran principal (Page 0) affichant la jauge, l'heure, la date et la puissance instantanée.
 void create_screen_meter() {
   ecran_jauge = lv_obj_create(NULL);
@@ -835,7 +890,8 @@ void interface_linky_initialisation() {
   lv_obj_add_event_cb(ecran_reset_sd, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
   lv_obj_clear_flag(ecran_reset_sd, LV_OBJ_FLAG_SCROLLABLE);
 
-  lv_scr_load(ecran_jauge); // Charger le compteur en premier
+  create_screen_accueil();
+  lv_scr_load(ecran_accueil); // Charger l'écran d'accueil en premier !
   index_page_actuelle = 0;
 }
 
