@@ -310,7 +310,7 @@ void create_screen_index() {
   lv_obj_set_style_text_letter_space(titre, 2, 0); 
 
   // Création des cartes pour chaque indicateur
-  lv_obj_t * carte_base = creer_carte_index(ecran_index, "TOTAL", lv_color_make(0, 150, 255), &etiquette_index_base); // Bleu
+  lv_obj_t * carte_base = creer_carte_index(ecran_index, "BASE", lv_color_make(0, 150, 255), &etiquette_index_base); // Bleu
   lv_obj_align(carte_base, LV_ALIGN_TOP_MID, 0, 70);
 
   lv_obj_t * carte_hp = creer_carte_index(ecran_index, "H. PLEINES", lv_color_make(255, 50, 50), &etiquette_index_hp);  // Rouge
