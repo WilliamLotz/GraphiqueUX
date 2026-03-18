@@ -1,8 +1,8 @@
 #ifndef LCD_CONFIG_H
 #define LCD_CONFIG_H
 
-#define EXAMPLE_LCD_H_RES              360
-#define EXAMPLE_LCD_V_RES              360
+#define ECRAN_RES_LARG              360
+#define ECRAN_RES_HAUT              360
 
 #define LCD_BIT_PER_PIXEL              16
 
@@ -13,14 +13,14 @@
 #define EXAMPLE_PIN_NUM_LCD_DATA2   17
 #define EXAMPLE_PIN_NUM_LCD_DATA3   18
 #define EXAMPLE_PIN_NUM_LCD_RST     21
-#define EXAMPLE_PIN_NUM_BK_LIGHT    47
+#define BROCHE_RETROECLAIRAGE    47
 
-#define EXAMPLE_LVGL_BUF_HEIGHT        (EXAMPLE_LCD_V_RES / 10)
-#define EXAMPLE_LVGL_TICK_PERIOD_MS    2                          //Timer time
-#define EXAMPLE_LVGL_TASK_MAX_DELAY_MS 500                        //LVGL Indicates the maximum time for a task to run
-#define EXAMPLE_LVGL_TASK_MIN_DELAY_MS 1                          //LVGL Minimum time to run a task
-#define EXAMPLE_LVGL_TASK_STACK_SIZE   (4 * 1024)                 //LVGL runs the task stack
-#define EXAMPLE_LVGL_TASK_PRIORITY     2                          //LVGL Running task priority
+#define EXAMPLE_LVGL_BUF_HEIGHT        (ECRAN_RES_HAUT / 10)
+#define EXAMPLE_LVGL_TICK_PERIOD_MS    2                          // Période d'horloge LVGL (ms)
+#define EXAMPLE_LVGL_TASK_MAX_DELAY_MS 500                        // Délai max d'attente d'une tâche LVGL (ms)
+#define EXAMPLE_LVGL_TASK_MIN_DELAY_MS 1                          // Délai min d'exécution d'une tâche LVGL (ms)
+#define EXAMPLE_LVGL_TASK_STACK_SIZE   (4 * 1024)                 // Taille de pile allouée à LVGL (octets)
+#define EXAMPLE_LVGL_TASK_PRIORITY     2                          // Priorité de la tâche LVGL
 
 #define EXAMPLE_TOUCH_ADDR                0x15
 #define EXAMPLE_PIN_NUM_TOUCH_SCL 12

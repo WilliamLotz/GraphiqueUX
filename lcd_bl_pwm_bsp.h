@@ -17,8 +17,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif 
-void lcd_bl_pwm_bsp_init(uint16_t duty);
-void setUpdutySubdivide(uint16_t duty);
+// Initialise le timer et le canal PWM (LEDC) pour contrôler le rétroéclairage.
+void initialisation_pwm_lcd_bsp(uint16_t duty);
+
+// Modifie le rapport cyclique (luminosité) du rétroéclairage PWM.
+void configurer_luminosite(uint16_t duty);
 
 
 

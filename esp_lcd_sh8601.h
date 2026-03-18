@@ -14,51 +14,27 @@
 extern "C" {
 #endif
 
-/**
- * @brief LCD panel initialization commands.
- *
- */
+// Commande d'initialisation du panneau LCD.
 typedef struct {
-    int cmd;                /*<! The specific LCD command */
-    const void *data;       /*<! Buffer that holds the command specific data */
-    size_t data_bytes;      /*<! Size of `data` in memory, in bytes */
-    unsigned int delay_ms;  /*<! Delay in milliseconds after this command */
-} sh8601_lcd_init_cmd_t;
+    int commande;                // Commande LCD spécifique
+    const void *donnees;       // Tampon de données spécifique à la commande
+    size_t octets_donnees;      // Taille des données en octets
+    unsigned int delai_ms;  // Délai en millisecondes après la commande
+} commande_init_lcd_sh8601_t;
 
-/**
- * @brief LCD panel vendor configuration.
- *
- * @note  This structure can be used to select interface type and override default initialization commands.
- * @note  This structure needs to be passed to the `vendor_config` field in `esp_lcd_panel_dev_config_t`.
- *
- */
+// Configuration spécifique (interface et commandes d'initialisation) passée à `vendor_config`.
 typedef struct {
-    const sh8601_lcd_init_cmd_t *init_cmds;    /*!< Pointer to initialization commands array.
-                                                 *  The array should be declared as `static const` and positioned outside the function.
-                                                 *  Please refer to `vendor_specific_init_default` in source file
-                                                 */
-    uint16_t init_cmds_size;    /*<! Number of commands in above array */
+    const commande_init_lcd_sh8601_t *commandes_init;    // Pointeur vers le tableau de commandes d'initialisation
+    uint16_t taille_commandes_init;                   // Nombre de commandes
     struct {
-        unsigned int use_qspi_interface: 1;     /*<! Set to 1 if use QSPI interface, default is SPI interface */
-    } flags;
-} sh8601_vendor_config_t;
+        unsigned int utiliser_interface_qspi: 1;    // 1 pour QSPI, 0 pour SPI
+    } drapeaux;
+} config_fournisseur_sh8601_t;
 
-/**
- * @brief Create LCD panel for model SH8601
- *
- * @param[in]  io LCD panel IO handle
- * @param[in]  panel_dev_config General panel device configuration (Use `vendor_config` to select QSPI interface or override default initialization commands)
- * @param[out] ret_panel Returned LCD panel handle
- * @return
- *      - ESP_OK: Success
- *      - Otherwise: Fail
- */
-esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel);
+// Crée et initialise un nouveau panneau LCD pour le modèle SH8601.
+esp_err_t nouveau_panneau_sh8601_esp_lcd(const esp_lcd_panel_io_handle_t io, const esp_lcd_panel_dev_config_t *panel_dev_config, esp_lcd_panel_handle_t *ret_panel);
 
-/**
- * @brief LCD panel bus configuration structure
- *
- */
+// Macros de configuration du bus SPI et QSPI pour le panneau LCD.
 #define SH8601_PANEL_BUS_SPI_CONFIG(sclk, mosi, max_trans_sz)   \
     {                                                           \
         .sclk_io_num = sclk,                                    \
@@ -78,10 +54,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .max_transfer_sz = max_trans_sz,                        \
     }
 
-/**
- * @brief LCD panel IO configuration structure
- *
- */
+// Macros de configuration IO SPI et IO QSPI pour le panneau LCD.
 #define SH8601_PANEL_IO_SPI_CONFIG(cs, dc, cb, cb_ctx)          \
     {                                                           \
         .cs_gpio_num = cs,                                      \

@@ -12,7 +12,7 @@
 #define EXAMPLE_ENCODER_ECA_PIN    8
 #define EXAMPLE_ENCODER_ECB_PIN    7
 
-// --- REAL DATA CONFIG (WIFI ON) ---
+// --- CONFIGURATION DONNÉES RÉELLES (WIFI ACTIVÉ) ---
 #define ENABLE_REAL_DATA // <--- ACTIVÉ
 
 #ifdef ENABLE_REAL_DATA
@@ -24,70 +24,69 @@
 #include "FS.h"
 #include "SD_MMC.h"
 
-// EEPROM Config
+// Configuration EEPROM
 #define EEPROM_SIZE 256
 struct AppConfig {
-    char ssid[32];
-    char pwd[32];
-    uint8_t initialized; // 0xA5 if valid
-    linky_data_t saved_data;
+    char nom_reseau[32];
+    char mot_de_passe[32];
+    uint8_t initialise; // 0xA5 si valide
+    donnees_linky_t donnees_sauvegardees;
 };
-AppConfig app_conf;
+AppConfig conf_app;
 
-const char* mqtt_server = "test.mosquitto.org";
+const char* serveur_mqtt = "test.mosquitto.org";
 
-WiFiClient espClient;
-PubSubClient client(espClient);
+WiFiClient clientEsp;
+PubSubClient client_mqtt(clientEsp);
 #endif
 
-// Knob Global Variables (Software Mode)
-volatile int lastEncoded = 0;
-volatile long encoderValue = 0;
-volatile int knob_event_request = 0; // 0=None, 1=Right, -1=Left
+// Variables Globales du Bouton (Mode Logiciel)
+volatile int dernierEncodeur = 0;
+volatile long valeurEncodeur = 0;
+volatile int requete_evenement_bouton = 0; // 0=Aucun, 1=Droite, -1=Gauche
 
-// ISR (Interruption) Simplifiée (Fiable)
-void IRAM_ATTR updateEncoder() {
+// Routine d'interruption (ISR) pour détecter la rotation de l'encodeur par lecture en quadrature.
+void IRAM_ATTR majEncodeur() {
   int a = digitalRead(EXAMPLE_ENCODER_ECA_PIN);
   int b = digitalRead(EXAMPLE_ENCODER_ECB_PIN);
 
-  // Logique Simple Quadrature
-  if (a == b) encoderValue++;
-  else encoderValue--;
+  if (a == b) valeurEncodeur++;
+  else valeurEncodeur--;
   
-  static long last_val = 0;
-  // Seuil de 2 pour filtrer un peu
-  if (abs(encoderValue - last_val) >= 2) { 
-      if (encoderValue > last_val) knob_event_request = 1;
-      else knob_event_request = -1;
-      last_val = encoderValue;
+  static long derniere_val = 0;
+  if (abs(valeurEncodeur - derniere_val) >= 2) { 
+      if (valeurEncodeur > derniere_val) requete_evenement_bouton = 1;
+      else requete_evenement_bouton = -1;
+      derniere_val = valeurEncodeur;
   }
 }
 
-// Linky Data Global Instance
-linky_data_t linky_data = {
+// Instance globale stockant l'état simulé ou réel du compteur Linky.
+donnees_linky_t donnees_linky = {
     .papp = 0, .iinst = 0, .index_base = 12345, .index_hp = 5600, .index_hc = 4200,
-    .isousc = 45, .option_tarif = "BASE", .mot_etat = "PAS D'ETAT", .voltage = 230
+    .isousc = 45, .option_tarif = "BASE", .mot_etat = "PAS D'ETAT", .tension = 230
 };
 
-// Mock Update Function (Fallback)
-void update_mock_data() {
-    int delta = (rand() % 401) - 200; 
-    int new_papp = (int)linky_data.papp + delta;
-    if (new_papp < 0) new_papp = 100;
-    if (new_papp > 9000) new_papp = 9000;
-    linky_data.papp = (uint16_t)new_papp;
-    linky_data.iinst = linky_data.papp / 230;
-    if(linky_data.iinst == 0 && linky_data.papp > 0) linky_data.iinst = 1;
-    linky_data.voltage = 225 + (rand() % 18);
-    if ((rand() % 100) < 5) linky_data.index_base++;
+// Met à jour les valeurs de consommation du compteur avec des données semi-aléatoires (mode Mock).
+void maj_donnees_fictives() {
+    int variation = (rand() % 401) - 200; 
+    int nouvelle_papp = (int)donnees_linky.papp + variation;
+    if (nouvelle_papp < 0) nouvelle_papp = 100;
+    if (nouvelle_papp > 9000) nouvelle_papp = 9000;
+    donnees_linky.papp = (uint16_t)nouvelle_papp;
+    donnees_linky.iinst = donnees_linky.papp / 230;
+    if(donnees_linky.iinst == 0 && donnees_linky.papp > 0) donnees_linky.iinst = 1;
+    donnees_linky.tension = 225 + (rand() % 18);
+    if ((rand() % 100) < 5) donnees_linky.index_base++;
 }
 
 #ifdef ENABLE_REAL_DATA
 
 
-bool mqtt_has_data = false;
+bool mqtt_a_donnees = false;
 
-void mqtt_callback(char* topic, byte* payload, unsigned int length) {
+// Callback appelé lors de la réception d'un message MQTT pour la mise à jour des paramètres Linky.
+void rappel_mqtt(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message MQTT recu [");
   Serial.print(topic);
   Serial.print("] ");
@@ -112,147 +111,127 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     return;
   }
 
-  linky_data_t old_data = linky_data;
+  donnees_linky_t anciennes_donnees = donnees_linky;
 
-  if (doc.containsKey("papp")) linky_data.papp = doc["papp"];
-  if (doc.containsKey("base")) linky_data.index_base = doc["base"];
-  if (doc.containsKey("hp")) linky_data.index_hp = doc["hp"];
-  if (doc.containsKey("hc")) linky_data.index_hc = doc["hc"];
-  if (doc.containsKey("iinst")) linky_data.iinst = doc["iinst"];
-  if (doc.containsKey("voltage")) linky_data.voltage = doc["voltage"];
+  if (doc.containsKey("papp")) donnees_linky.papp = doc["papp"];
+  if (doc.containsKey("base")) donnees_linky.index_base = doc["base"];
+  if (doc.containsKey("hp")) donnees_linky.index_hp = doc["hp"];
+  if (doc.containsKey("hc")) donnees_linky.index_hc = doc["hc"];
+  if (doc.containsKey("iinst")) donnees_linky.iinst = doc["iinst"];
+  if (doc.containsKey("tension")) donnees_linky.tension = doc["tension"];
 
- // "C:\Program Files\mosquitto\mosquitto_pub.exe" -h test.mosquitto.org -t "lotz/home/linky/status" -m "{\"papp\": 3000, \"voltage\": 236, \"iinst\": 5}"
-  
-  mqtt_has_data = true;
+  mqtt_a_donnees = true;
 
-  // Sauvegarder dans la mémoire mais on se limite à une fois toutes les 60 secondes pour ne pas griller la mémoire Flash
-  static uint32_t last_eeprom_save = 0;
-  if (memcmp(&old_data, &linky_data, sizeof(linky_data_t)) != 0) {
-      if (millis() - last_eeprom_save > 60000) {
-          app_conf.saved_data = linky_data;
-          EEPROM.put(0, app_conf);
+  static uint32_t derniere_sauvegarde_eeprom = 0;
+  if (memcmp(&anciennes_donnees, &donnees_linky, sizeof(donnees_linky_t)) != 0) {
+      if (millis() - derniere_sauvegarde_eeprom > 60000) {
+          conf_app.donnees_sauvegardees = donnees_linky;
+          EEPROM.put(0, conf_app);
           EEPROM.commit();
-          last_eeprom_save = millis();
+          derniere_sauvegarde_eeprom = millis();
           Serial.println("Donnees Linky sauvegardees en EEPROM");
       }
   }
 }
 
-void reconnect() {
-  static uint32_t last_reconnect_attempt = 0;
-  if (!client.connected() && (millis() - last_reconnect_attempt > 5000)) {
+// Tente de reconnecter le client_mqtt MQTT au broker avec un délai anti-spam de 5 secondes.
+void reconnexion_mqtt() {
+  static uint32_t derniere_tentative_reconnexion = 0;
+  if (!client_mqtt.connected() && (millis() - derniere_tentative_reconnexion > 5000)) {
     Serial.print("Connexion au broker MQTT...");
-    String clientId = "ESP32-Linky-";
-    clientId += String(random(0xffff), HEX);
+    String identifiantClient = "ESP32-Linky-";
+    identifiantClient += String(random(0xffff), HEX);
     
-    if (client.connect(clientId.c_str())) {
+    if (client_mqtt.connect(identifiantClient.c_str())) {
       Serial.println("Connecté!");
-      client.subscribe("lotz/home/linky/status");
+      client_mqtt.subscribe("lotz/home/linky/status");
     } else {
       Serial.print("Echec, rc=");
-      Serial.print(client.state());
+      Serial.print(client_mqtt.state());
       Serial.println(" nouvel essai dans 5s");
     }
-    last_reconnect_attempt = millis();
+    derniere_tentative_reconnexion = millis();
   }
 }
 #endif
 
 
 // --- CARTE SD (Historique) ---
-bool sd_card_ok = false;
+bool carte_sd_ok = false;
 
-// Lit le CSV et reconstruit les tableaux history_week et history_year
-void read_history_from_sd() {
+// Lit le fichier CSV d'historique sur la SD et reconstruit les différents tableaux de statistiques.
+void lire_historique_depuis_sd() {
     if (!SD_MMC.exists("/historique_linky.csv")) return;
     
     File f = SD_MMC.open("/historique_linky.csv", FILE_READ);
     if (!f) return;
 
-    // Reset des tableaux
-    for (int i=0; i<7; i++) linky_data.history_week[i] = 0;
-    for (int i=0; i<12; i++) linky_data.history_year[i] = 0;
+    for (int i=0; i<7; i++) donnees_linky.historique_semaine[i] = 0;
+    for (int i=0; i<12; i++) donnees_linky.historique_annee[i] = 0;
 
-    String header = f.readStringUntil('\n'); // Passer l'entête
-    
-    uint32_t last_index = 0;
+    String entete = f.readStringUntil('\n');
+    uint32_t dernier_index = 0;
     
     while(f.available()) {
         String line = f.readStringUntil('\n');
         line.trim();
         if (line.length() == 0) continue;
         
-        // Parsing basique: 2026-02-28,12500000,0,0,3000,5,45,236
-        int first_comma = line.indexOf(',');
-        if (first_comma == -1) continue;
-        String date_str = line.substring(0, first_comma);
+        int premiere_virgule = line.indexOf(',');
+        if (premiere_virgule == -1) continue;
+        String chaine_date = line.substring(0, premiere_virgule);
         
-        int second_comma = line.indexOf(',', first_comma+1);
-        if (second_comma == -1) continue;
-        String base_str = line.substring(first_comma+1, second_comma);
-        uint32_t current_index = base_str.toInt();
+        int deuxieme_virgule = line.indexOf(',', premiere_virgule+1);
+        if (deuxieme_virgule == -1) continue;
+        String chaine_base = line.substring(premiere_virgule+1, deuxieme_virgule);
+        uint32_t index_actuel = chaine_base.toInt();
         
-        // Si on a un index precedent, la conso du jour est la difference
-        if (last_index > 0 && current_index >= last_index) {
-            uint32_t conso_jour_wh = current_index - last_index;
+        if (dernier_index > 0 && index_actuel >= dernier_index) {
+            uint32_t conso_jour_wh = index_actuel - dernier_index;
             
-            // Extraire Mois (01-12)
-            int dash1 = date_str.indexOf('-');
-            int dash2 = date_str.lastIndexOf('-');
-            if (dash1 != -1 && dash2 != -1) {
-                int year = date_str.substring(0, dash1).toInt();
-                int month = date_str.substring(dash1+1, dash2).toInt();
-                int day = date_str.substring(dash2+1).toInt();
+            int tiret1 = chaine_date.indexOf('-');
+            int tiret2 = chaine_date.lastIndexOf('-');
+            if (tiret1 != -1 && tiret2 != -1) {
+                int annee = chaine_date.substring(0, tiret1).toInt();
+                int mois = chaine_date.substring(tiret1+1, tiret2).toInt();
+                int jour = chaine_date.substring(tiret2+1).toInt();
                 
-                // Ajouter à l'année
-                if (month >= 1 && month <= 12) {
-                    linky_data.history_year[month - 1] += conso_jour_wh;
+                if (mois >= 1 && mois <= 12) {
+                    donnees_linky.historique_annee[mois - 1] += conso_jour_wh;
                 }
                 
-                // Calcul empirique du jour de la semaine pour Zeller ou juste mettre dans week
-                // Pour simplifier et ne pas implémenter Zeller en entier ici, 
-                // on va remplir le dernier mois dans l'année. 
-                // Dans la réalité, the week history is complex to map strictly to "last 7 days" without full UNIX timestamps.
-                // On met une implémentation approchée (jour % 7 pour l'instant) ou juste laisser LVGL gerer une pseudo-data si trop vieux
+                if (mois < 3) { mois += 12; annee -= 1; }
+                int K = annee % 100; int J = annee / 100;
+                int h = (jour + 13*(mois+1)/5 + K + K/4 + J/4 + 5*J) % 7;
+                int jour_semaine = ((h + 5) % 7); 
                 
-                // Calcul Jour de la semaine (0=Dimanche, 1=Lundi...) // Algo de Zeller
-                if (month < 3) { month += 12; year -= 1; }
-                int K = year % 100; int J = year / 100;
-                int h = (day + 13*(month+1)/5 + K + K/4 + J/4 + 5*J) % 7;
-                // convert to 0=Lundi, 6=Dimanche
-                int wday = ((h + 5) % 7); 
-                
-                // On ecrase le jour de la semaine (ca gardera les 7 derniers jours par rotation)
-                linky_data.history_week[wday] = (uint16_t)(conso_jour_wh / 1000); // En kWh pour l'UI
-                
-                // Note : Pour l'année on garde en Wh, on divisera dans l'UI
+                donnees_linky.historique_semaine[jour_semaine] = (uint16_t)(conso_jour_wh / 1000); 
             }
         }
-        last_index = current_index;
+        dernier_index = index_actuel;
     }
     f.close();
     Serial.println("Historique CSV lu depuis la carte SD.");
 }
 
-void init_sd_card() {
-    // Broches pour la carte SD du module Waveshare (D3=2, CMD=3, CLK=4, D0=5, D1=6, D2=42)
+// Initialise la communication SD, monte le disque virtuel et crée/lit le fichier d'historique au besoin.
+void initialisation_carte_sd() {
     SD_MMC.setPins(4, 3, 5, 6, 42, 2); 
     
-    if(!SD_MMC.begin("/sdcard", false, true)) { // format_if_empty = true
+    if(!SD_MMC.begin("/sdcard", false, true)) {
         Serial.println("Erreur Montage Carte SD");
-        sd_card_ok = false;
+        carte_sd_ok = false;
         return;
     }
-    uint8_t cardType = SD_MMC.cardType();
-    if(cardType == CARD_NONE){
+    uint8_t typeCarte = SD_MMC.cardType();
+    if(typeCarte == CARD_NONE){
         Serial.println("Aucune Carte SD n'est inseree");
-        sd_card_ok = false;
+        carte_sd_ok = false;
         return;
     }
     Serial.printf("Carte SD OK ! Taille: %lluMB\n", SD_MMC.cardSize() / (1024 * 1024));
-    sd_card_ok = true;
+    carte_sd_ok = true;
     
-    // Creer fichier historique avec entetes si absent
     if (!SD_MMC.exists("/historique_linky.csv")) {
         File f = SD_MMC.open("/historique_linky.csv", FILE_WRITE);
         if (f) {
@@ -261,39 +240,39 @@ void init_sd_card() {
             Serial.println("Fichier historique CSV initialise.");
         }
     } else {
-        read_history_from_sd(); // Charger l'historique en memoire
+        lire_historique_depuis_sd();
     }
 }
 
-void log_daily_to_sd() {
-    if (!sd_card_ok || !mqtt_has_data) return;
+// Enregistre les statistiques de la journée dans un fichier CSV sur la carte SD à minuit pile.
+void journaliser_jour_sur_sd() {
+    if (!carte_sd_ok || !mqtt_a_donnees) return;
     
-    static int last_logged_day = -1;
-    time_t now;
-    time(&now);
-    struct tm *t = localtime(&now);
+    static int dernier_jour_journalise = -1;
+    time_t maintenant;
+    time(&maintenant);
+    struct tm *temps_actuel = localtime(&maintenant);
     
-    // Ne pas logger si l'heure n'est pas encore synchro
-    if (t->tm_year < 120) return; 
+    if (temps_actuel->tm_year < 120) return; 
     
-    // On log la conso à chaque changement de jour (à minuit pile) ou au premier demarrage si le jour a changé
-    if (last_logged_day != -1 && t->tm_mday != last_logged_day) {
+    if (dernier_jour_journalise != -1 && temps_actuel->tm_mday != dernier_jour_journalise) {
         File f = SD_MMC.open("/historique_linky.csv", FILE_APPEND);
         if (f) {
-            char log_line[128];
-            snprintf(log_line, sizeof(log_line), "%04d-%02d-%02d,%lu,%lu,%lu,%u,%u,%u,%u", 
-                     t->tm_year+1900, t->tm_mon+1, t->tm_mday, 
-                     linky_data.index_base, linky_data.index_hp, linky_data.index_hc,
-                     linky_data.papp, linky_data.iinst, linky_data.isousc, linky_data.voltage);
-            f.println(log_line);
+            char ligne_journal[128];
+            snprintf(ligne_journal, sizeof(ligne_journal), "%04d-%02d-%02d,%lu,%lu,%lu,%u,%u,%u,%u", 
+                     temps_actuel->tm_year+1900, temps_actuel->tm_mon+1, temps_actuel->tm_mday, 
+                     donnees_linky.index_base, donnees_linky.index_hp, donnees_linky.index_hc,
+                     donnees_linky.papp, donnees_linky.iinst, donnees_linky.isousc, donnees_linky.tension);
+            f.println(ligne_journal);
             f.close();
             Serial.print("Historique sauvegarde sur SD : ");
-            Serial.println(log_line);
+            Serial.println(ligne_journal);
         }
     }
-    last_logged_day = t->tm_mday;
+    dernier_jour_journalise = temps_actuel->tm_mday;
 }
 
+// Initialisation globale du système (LCD, I2C, WiFi, MQTT, LVGL, SD, EEPROM).
 void setup() {
   Serial.begin(115200);
   delay(1000); 
@@ -302,156 +281,139 @@ void setup() {
 #ifdef ENABLE_REAL_DATA
     Serial.println("MODE WIFI ACTIF");
 
-    client.setServer(mqtt_server, 1883);
-    client.setCallback(mqtt_callback);
+    client_mqtt.setServer(serveur_mqtt, 1883);
+    client_mqtt.setCallback(rappel_mqtt);
     configTime(3600, 3600, "pool.ntp.org");
 #else
     Serial.println("MODE MOCK ACTIF");
-    // Mock Time 2026/01/26 22:22
-    struct tm tm;
-    tm.tm_year = 2026 - 1900; tm.tm_mon = 0; tm.tm_mday = 26;
-    tm.tm_hour = 22; tm.tm_min = 22; tm.tm_sec = 0;
-    time_t t = mktime(&tm);
-    struct timeval tv = { .tv_sec = t };
-    settimeofday(&tv, NULL);
+    struct tm temps_m;
+    temps_m.tm_year = 2026 - 1900; temps_m.tm_mon = 0; temps_m.tm_mday = 26;
+    temps_m.tm_hour = 22; temps_m.tm_min = 22; temps_m.tm_sec = 0;
+    time_t temps = mktime(&temps_m);
+    struct timeval temps_val = { .tv_sec = temps };
+    settimeofday(&temps_val, NULL);
 #endif
 
-  // 1. Init Drivers LCD
   lcd_lvgl_Init(); 
   
-  // 2. Hardware Init Check
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   Serial.println("S3 Init Hardware...");
-  Touch_Init();
-  lcd_bl_pwm_bsp_init(BACKLIGHT_BRIGHTNESS);
+  initialisation_tactile();
+  initialisation_pwm_lcd_bsp(BACKLIGHT_BRIGHTNESS);
 
-  // 3. KNOB SOFTWARE INIT (WiFi COMPATIBLE)
   Serial.println("KNOB SETUP (SOFTWARE MODE)...");
   pinMode(EXAMPLE_ENCODER_ECA_PIN, INPUT_PULLUP);
   pinMode(EXAMPLE_ENCODER_ECB_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(EXAMPLE_ENCODER_ECA_PIN), updateEncoder, CHANGE);
-  // attachInterrupt(digitalPinToInterrupt(EXAMPLE_ENCODER_ECB_PIN), updateEncoder, CHANGE); // Only A needed (Step 2334 config)
+  attachInterrupt(digitalPinToInterrupt(EXAMPLE_ENCODER_ECA_PIN), majEncodeur, CHANGE);
   Serial.println("KNOB INIT DONE");
 #endif
 
-  // 4. Init UI
-  ui_linky_init();
+  interface_linky_initialisation();
 
-  // Load Flash memory from EEPROM
   EEPROM.begin(EEPROM_SIZE);
-  EEPROM.get(0, app_conf);
-  if (app_conf.initialized == 0xA5) {
+  EEPROM.get(0, conf_app);
+  if (conf_app.initialise == 0xA5) {
       Serial.println("EEPROM WiFi Found:");
-      Serial.println(app_conf.ssid);
-      // Auto-connect on boot
-      strcpy(wifi_ssid, app_conf.ssid);
-      strcpy(wifi_pwd, app_conf.pwd);
-      wifi_connect_requested = true; // Trigger connection
+      Serial.println(conf_app.nom_reseau);
+      strcpy(wifi_reseau, conf_app.nom_reseau);
+      strcpy(wifi_mdp, conf_app.mot_de_passe);
+      connexion_wifi_demandee = true;
       
-      // Restaurer les dernières données Linky connues
-      linky_data = app_conf.saved_data;
-      mqtt_has_data = true; // Bloquer le mock, utiliser les vraies données fixes en attendant le vrai message
+      donnees_linky = conf_app.donnees_sauvegardees;
+      mqtt_a_donnees = true;
   } else {
-      Serial.println("No WiFi saved in EEPROM.");
+      Serial.println("No WiFi saved in EEPROM."); // Aucun WiFi sauvegardé dans l'EEPROM.
   }
   
-  // 5. Init SD Card
-  init_sd_card();
+  initialisation_carte_sd();
 
-  Serial.println("Setup done.");
+  Serial.println("Setup done."); // Fin de l'initialisation.
 }
 
+// Boucle principale qui maintient la connexion WiFi/MQTT, met à jour l'UID LVGL et synchronise les données affichées.
 void loop() {
-  // 1. Check Knob Flag (Thread Safe UI Update)
-  if (knob_event_request != 0) {
-      Serial.print("Knob Event: "); Serial.println(knob_event_request);
-      ui_linky_change_page(knob_event_request);
-      knob_event_request = 0;
+  if (requete_evenement_bouton != 0) {
+      Serial.print("Knob Event: "); Serial.println(requete_evenement_bouton);
+      interface_linky_changer_page(requete_evenement_bouton);
+      requete_evenement_bouton = 0;
   }
   
-  // Debug Raw Value
-  static long last_debug_enc = 0;
-  if(encoderValue != last_debug_enc) {
-      Serial.print("Raw Enc: "); Serial.println(encoderValue);
-      last_debug_enc = encoderValue;
+  static long dernier_enc_debug = 0;
+  if(valeurEncodeur != dernier_enc_debug) {
+      Serial.print("Raw Enc: "); Serial.println(valeurEncodeur);
+      dernier_enc_debug = valeurEncodeur;
   }
 
-  static uint32_t last_update = 0;
+  static uint32_t derniere_maj = 0;
   
-  // 2. LVGL Engine
   lv_timer_handler();
   
-  // 3. Data Flow
 #ifdef ENABLE_REAL_DATA
   if (WiFi.status() == WL_CONNECTED) {
-      if (!client.connected()) {
-          reconnect();
+      if (!client_mqtt.connected()) {
+          reconnexion_mqtt();
       }
-      client.loop(); // Traite les messages MQTT entrants
+      client_mqtt.loop();
   }
 
-  if (millis() - last_update > 500) { 
-      if (!mqtt_has_data) {
-          update_mock_data(); // Valeurs fictives tant qu'on n'a pas recu de vrai message MQTT
+  if (millis() - derniere_maj > 500) { 
+      if (!mqtt_a_donnees) {
+          maj_donnees_fictives();
       }
-      ui_linky_update(&linky_data);
-      last_update = millis();
-      log_daily_to_sd(); // Verifie s'il faut logger (changement de date)
+      interface_linky_actualiser(&donnees_linky);
+      derniere_maj = millis();
+      journaliser_jour_sur_sd();
   }
 #else
-  // Mock Flow
-  if (millis() - last_update > 1000) {
-      update_mock_data();
-      ui_linky_update(&linky_data);
-      last_update = millis();
+  if (millis() - derniere_maj > 1000) {
+      maj_donnees_fictives();
+      interface_linky_actualiser(&donnees_linky);
+      derniere_maj = millis();
   }
 #endif
   
-  // 4. WiFi Handler (Dynamic)
-  if (wifi_connect_requested) {
+  if (connexion_wifi_demandee) {
 
-      wifi_connect_requested = false;
+      connexion_wifi_demandee = false;
       
-      // Trim potential newlines from UI input
-      String ssid_str = String(wifi_ssid); ssid_str.trim();
-      String pwd_str = String(wifi_pwd); pwd_str.trim();
+      String chaine_ssid = String(wifi_reseau); chaine_ssid.trim();
+      String chaine_mdp = String(wifi_mdp); chaine_mdp.trim();
       
-      Serial.print("Connecting to: ["); Serial.print(ssid_str); Serial.println("]");
+      Serial.print("Connecting to: ["); Serial.print(chaine_ssid); Serial.println("]");
       
-      WiFi.mode(WIFI_STA); // Force Station mode
-      WiFi.disconnect(true); // Full disconnect/cleanup
+      WiFi.mode(WIFI_STA);
+      WiFi.disconnect(true);
       delay(100);
-      WiFi.begin(ssid_str.c_str(), pwd_str.c_str());
+      WiFi.begin(chaine_ssid.c_str(), chaine_mdp.c_str());
       
-      uint32_t start_wifi = millis();
-      bool connected = false;
-      while(millis() - start_wifi < 20000) { // 20s Timeout (More time)
+      uint32_t debut_wifi = millis();
+      bool connecte = false;
+      while(millis() - debut_wifi < 20000) {
           if(WiFi.status() == WL_CONNECTED) {
-              connected = true;
+              connecte = true;
               break;
           }
-          lv_timer_handler(); // Keep UI alive
+          lv_timer_handler();
           delay(100);
       }
       
-      if(connected) {
+      if(connecte) {
           Serial.println("WiFi Connected!");
           Serial.println(WiFi.localIP());
           
-          // Save to EEPROM
-          strcpy(app_conf.ssid, ssid_str.c_str());
-          strcpy(app_conf.pwd, pwd_str.c_str());
-          app_conf.initialized = 0xA5;
-          EEPROM.put(0, app_conf);
+          strcpy(conf_app.nom_reseau, chaine_ssid.c_str());
+          strcpy(conf_app.mot_de_passe, chaine_mdp.c_str());
+          conf_app.initialise = 0xA5;
+          EEPROM.put(0, conf_app);
           EEPROM.commit();
           Serial.println("WiFi Saved to EEPROM!");
 
           String ip = WiFi.localIP().toString();
           String msg = "Connecte " + ip;
-          ui_linky_set_wifi_status(msg.c_str(), true);
+          interface_linky_statut_wifi(msg.c_str(), true);
       } else {
           Serial.print("WiFi Failed, Status: "); Serial.println(WiFi.status());
-          ui_linky_set_wifi_status("Echec Connexion", false);
+          interface_linky_statut_wifi("Echec Connexion", false);
       }
   }
 

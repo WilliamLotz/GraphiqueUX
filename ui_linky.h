@@ -8,22 +8,21 @@
 extern "C" {
 #endif
 
-// Initialisation de l'UI
-void ui_linky_init();
+// Initialise toutes les pages de l'interface graphique Linky et charge l'écran principal.
+void interface_linky_initialisation();
 
-// Appelé quand le knob tourne (+1 ou -1)
-void ui_linky_change_page(int direction);
+// Change la page affichée à l'écran (direction = +1 ou -1) selon la navigation de l'encodeur.
+void interface_linky_changer_page(int direction);
 
-// Appelé périodiquement pour mettre à jour les valeurs
-void ui_linky_update(linky_data_t *data);
+// Met à jour périodiquement les éléments graphiques avec les dernières données du compteur Linky.
+void interface_linky_actualiser(donnees_linky_t *data);
 
-// Variables partagées pour le WiFi
-extern char wifi_ssid[32];
-extern char wifi_pwd[32];
-extern volatile bool wifi_connect_requested;
+extern char wifi_reseau[32];
+extern char wifi_mdp[32];
+extern volatile bool connexion_wifi_demandee;
 
-// Fonction pour mettre à jour le statut WiFi depuis le main
-void ui_linky_set_wifi_status(const char* msg, bool success);
+// Modifie le texte et la couleur du label de statut WiFi sur la page de configuration.
+void interface_linky_statut_wifi(const char* msg, bool success);
 
 #ifdef __cplusplus
 }

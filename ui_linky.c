@@ -7,77 +7,77 @@
 #define PI 3.14159265358979323846
 #endif
 
-extern linky_data_t linky_data; // Ajout pour acceder aux données globales des historiques de la SD
+extern donnees_linky_t donnees_linky; // Ajout pour acceder aux données globales des historiques de la SD
 
-// --- GLOBALS ---
-static lv_obj_t *screen_meter;
-static lv_obj_t *screen_index;
-static lv_obj_t *screen_week;    // Page 2
-static lv_obj_t *screen_history; // Page 3
-static lv_obj_t *screen_info;    // Page 4
-static lv_obj_t *screen_wifi;    // Page 5
+// --- GLOBALES ---
+static lv_obj_t *ecran_jauge;
+static lv_obj_t *ecran_index;
+static lv_obj_t *ecran_semaine;    // Page 2
+static lv_obj_t *ecran_historique; // Page 3
+static lv_obj_t *ecran_info;    // Page 4
+static lv_obj_t *ecran_wifi;    // Page 5
 
-static lv_obj_t *highlight_week = NULL;
-static lv_obj_t *highlight_month = NULL;
+static lv_obj_t *surbrillance_semaine = NULL;
+static lv_obj_t *surbrillance_mois = NULL;
 
-static int current_page_index = 0; // 0=Meter, 1=Index, 2=Week, 3=History, 4=Info, 5=WiFi
-
+static int index_page_actuelle = 0; // 0=Jauge, 1=Index, 2=Semaine, 3=Historique, 4=Info, 5=WiFi
 
 // Styles
-static lv_style_t style_text_large;
-static lv_style_t style_text_xl;
-static lv_style_t style_kb; // Style pour le clavier (touches)
-static lv_style_t style_kb_main; // Style pour le clavier (conteneur)
+static lv_style_t style_texte_grand;
+static lv_style_t style_texte_tg;
+static lv_style_t style_clavier; // Style pour le clavier (touches)
+static lv_style_t style_clavier_principal; // Style pour le clavier (conteneur)
 
 // Meter Widgets
-static lv_obj_t *label_time;
-static lv_obj_t *label_date;
-static lv_obj_t *label_papp_val; 
-static lv_obj_t *label_papp_unit;
-static lv_obj_t *meter_bars[6];
-static lv_obj_t *meter_labels_val[6];
-static lv_obj_t *meter_labels_time[6];
-static int meter_values[6] = {0}; 
+static lv_obj_t *etiquette_heure;
+static lv_obj_t *etiquette_date;
+static lv_obj_t *etiquette_papp_valeur; 
+static lv_obj_t *etiquette_papp_unite;
+static lv_obj_t *barres_jauge[6];
+static lv_obj_t *etiquettes_jauge_valeur[6];
+static lv_obj_t *etiquettes_jauge_temps[6];
+static int valeurs_jauge[6] = {0}; 
 
-// Index Widgets
-static lv_obj_t *label_index_base;
-static lv_obj_t *label_index_hp;
-static lv_obj_t *label_index_hc;
+// Widgets d'index
+static lv_obj_t *etiquette_index_base;
+static lv_obj_t *etiquette_index_hp;
+static lv_obj_t *etiquette_index_hc;
 
-// Info Widgets
-static lv_obj_t *label_volt;
-static lv_obj_t *label_volt_stats;
-static lv_obj_t *label_amp;
-static lv_obj_t *label_amp_stats;
-// Stats Data
-static uint16_t v_min = 999, v_max = 0;
-static uint32_t v_sum = 0, v_count = 0;
-static uint16_t a_min = 999, a_max = 0;
-static uint32_t a_sum = 0, a_count = 0;
+// Widgets d'information
+static lv_obj_t *etiquette_tension;
+static lv_obj_t *etiquette_stats_tension;
+static lv_obj_t *etiquette_intensite;
+static lv_obj_t *etiquette_stats_intensite;
+// Données statistiques
+static uint16_t tension_min = 999, tension_max = 0;
+static uint32_t tension_somme = 0, tension_compteur = 0;
+static uint16_t intensite_min = 999, intensite_max = 0;
+static uint32_t intensite_somme = 0, intensite_compteur = 0;
 
-// History/Week Radial Data
-static lv_point_t history_points[12][2]; 
-static lv_obj_t * history_lines[12];     
-static lv_obj_t * label_months[12];      
-const char* month_letters[12] = {"J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"};
+// Historique
+static lv_point_t points_historique[12][2]; 
+static lv_obj_t * lignes_historique[12];     
+static lv_obj_t * etiquettes_mois[12];      
+const char* lettres_mois[12] = {"J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"};
 
-static lv_point_t week_points[7][2];
-static lv_obj_t * week_lines[7];
-static lv_obj_t * label_days[7];
-const char* day_names[7] = {"L", "M", "M", "J", "V", "S", "D"};
+// Semaine
+static lv_point_t points_semaine[7][2];
+static lv_obj_t * lignes_semaine[7];
+static lv_obj_t * etiquettes_jours[7];
+const char* noms_jours[7] = {"L", "M", "M", "J", "V", "S", "D"};
 
-// WiFi Widgets
-static lv_obj_t *ta_ssid;
-static lv_obj_t *ta_pwd;
-static lv_obj_t *kb;
-static lv_obj_t *btn_connect;
-static lv_obj_t *label_wifi_status;
-char wifi_ssid[32] = {0};
-char wifi_pwd[32] = {0};
-volatile bool wifi_connect_requested = false;
+// Widgets WiFi
+static lv_obj_t *zone_texte_reseau;
+static lv_obj_t *zone_texte_mdp;
+static lv_obj_t *clavier_virtuel;
+static lv_obj_t *bouton_connexion;
+static lv_obj_t *etiquette_statut_wifi;
+char wifi_reseau[32] = {0};
+char wifi_mdp[32] = {0};
+volatile bool connexion_wifi_demandee = false;
 
-// AZERTY Layout Maps (5 Rows for better spacing)
-// AZERTY Layout Maps (Fixed with Shift Logic)
+// Cartes de disposition AZERTY (5 lignes pour un meilleur espacement)
+// Cartes de disposition AZERTY (Corrigé avec la logique de majuscule)
 static const char * kb_map_azerty_lc[] = {
     "a", "z", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
     "q", "s", "d", "f", "g", "h", "j", "k", "l", "m", "\n",
@@ -133,605 +133,609 @@ static const lv_btnmatrix_ctrl_t kb_ctrl_spec_map[] = {
 };
 
 
-// --- INIT STYLES ---
+// Initialise les styles globaux appliqués aux textes et éléments du clavier virtuel.
 void style_init() {
-  lv_style_init(&style_text_large);
-  // Zoom not always supported, rely on fonts if possible, or keep simple
-  // lv_style_set_transform_zoom(&style_text_large, 384); 
+  lv_style_init(&style_texte_grand);
+  // Le zoom n'est pas toujours supporté, s'appuyer sur les polices si possible, ou garder simple
+  // lv_style_set_transform_zoom(&style_texte_grand, 384); 
 
-  lv_style_init(&style_text_xl);
-  // lv_style_set_transform_zoom(&style_text_xl, 512); 
+  lv_style_init(&style_texte_tg);
+  // lv_style_set_transform_zoom(&style_texte_tg, 512); 
 
   // Style Clavier (Touches)
-  lv_style_init(&style_kb);
-  lv_style_set_text_font(&style_kb, &lv_font_montserrat_16);
-  lv_style_set_radius(&style_kb, 3); // Rayon plus petit
+  lv_style_init(&style_clavier);
+  lv_style_set_text_font(&style_clavier, &lv_font_montserrat_16);
+  lv_style_set_radius(&style_clavier, 3); // Rayon plus petit
 
   // Style Clavier (Conteneur/Espacements)
-  lv_style_init(&style_kb_main);
-  lv_style_set_pad_row(&style_kb_main, 1);    // Petit espace (1px)
-  lv_style_set_pad_column(&style_kb_main, 1); // Petit espace (1px)
-  lv_style_set_pad_all(&style_kb_main, 1);    // Marge minime
-  lv_style_set_pad_bottom(&style_kb_main, 10); // Espace vide en bas pour éviter la zone tactile difficile
-  lv_style_set_radius(&style_kb_main, 0);
+  lv_style_init(&style_clavier_principal);
+  lv_style_set_pad_row(&style_clavier_principal, 1);    // Petit espace (1px)
+  lv_style_set_pad_column(&style_clavier_principal, 1); // Petit espace (1px)
+  lv_style_set_pad_all(&style_clavier_principal, 1);    // Marge minime
+  lv_style_set_pad_bottom(&style_clavier_principal, 10); // Espace vide en bas pour éviter la zone tactile difficile
+  lv_style_set_radius(&style_clavier_principal, 0);
 }
 
-// --- SCREEN: METER (PAGE 0) ---
+// Crée l'écran principal (Page 0) affichant la jauge, l'heure, la date et la puissance instantanée.
 void create_screen_meter() {
-  screen_meter = lv_obj_create(NULL);
-  lv_obj_set_style_bg_color(screen_meter, lv_color_black(), 0); 
+  ecran_jauge = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(ecran_jauge, lv_color_black(), 0); 
   
-  // Time for Init
-  time_t now;
-  time(&now);
-  struct tm *t = localtime(&now);
+  // Heure d'initialisation
+  time_t maintenant;
+  time(&maintenant);
+  struct tm *temps = localtime(&maintenant);
 
-  // Header Time
-  label_time = lv_label_create(screen_meter);
-  lv_label_set_text_fmt(label_time, "%02d:%02d", t->tm_hour, t->tm_min);
-  lv_obj_set_style_text_color(label_time, lv_color_white(), 0);
-  lv_obj_set_style_text_font(label_time, &lv_font_montserrat_30, 0); 
-  lv_obj_align(label_time, LV_ALIGN_TOP_MID, 0, 40);
+  // Heure dans l'en-tête
+  etiquette_heure = lv_label_create(ecran_jauge);
+  lv_label_set_text_fmt(etiquette_heure, "%02d:%02d", temps->tm_hour, temps->tm_min);
+  lv_obj_set_style_text_color(etiquette_heure, lv_color_white(), 0);
+  lv_obj_set_style_text_font(etiquette_heure, &lv_font_montserrat_30, 0); 
+  lv_obj_align(etiquette_heure, LV_ALIGN_TOP_MID, 0, 40);
 
   // Date
-  label_date = lv_label_create(screen_meter);
-  const char* week_days[] = {"DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"};
-  const char* months[] = {"JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"};
-  lv_label_set_text_fmt(label_date, "%s %d %s\n%d", week_days[t->tm_wday], t->tm_mday, months[t->tm_mon], 1900 + t->tm_year);
+  etiquette_date = lv_label_create(ecran_jauge);
+  const char* jours_semaine[] = {"DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"};
+  const char* mois_annee[] = {"JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"};
+  lv_label_set_text_fmt(etiquette_date, "%s %d %s\n%d", jours_semaine[temps->tm_wday], temps->tm_mday, mois_annee[temps->tm_mon], 1900 + temps->tm_year);
   
-  lv_obj_set_style_text_align(label_date, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_color(label_date, lv_color_white(), 0); 
-  lv_obj_set_style_text_font(label_time, &lv_font_montserrat_20, 0);
-  lv_obj_align_to(label_date, label_time, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+  lv_obj_set_style_text_align(etiquette_date, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_color(etiquette_date, lv_color_white(), 0); 
+  lv_obj_set_style_text_font(etiquette_heure, &lv_font_montserrat_20, 0);
+  lv_obj_align_to(etiquette_date, etiquette_heure, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
 
-  // Central Box
-  lv_obj_t *box = lv_obj_create(screen_meter);
-  lv_obj_set_size(box, 260, 90);
-  lv_obj_align(box, LV_ALIGN_TOP_MID, 0, 110); 
-  lv_obj_set_style_bg_color(box, lv_color_black(), 0); 
-  lv_obj_set_style_border_color(box, lv_color_make(0, 0, 255), 0); // Hack Color
-  lv_obj_set_style_border_width(box, 1, 0);
-  lv_obj_set_style_radius(box, 20, 0);
-  lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
+  // Boîte centrale
+  lv_obj_t *boite = lv_obj_create(ecran_jauge);
+  lv_obj_set_size(boite, 260, 90);
+  lv_obj_align(boite, LV_ALIGN_TOP_MID, 0, 110); 
+  lv_obj_set_style_bg_color(boite, lv_color_black(), 0); 
+  lv_obj_set_style_border_color(boite, lv_color_make(0, 0, 255), 0); // Ajustement temporaire de la couleur
+  lv_obj_set_style_border_width(boite, 1, 0);
+  lv_obj_set_style_radius(boite, 20, 0);
+  lv_obj_clear_flag(boite, LV_OBJ_FLAG_SCROLLABLE);
 
-  // Value
-  label_papp_val = lv_label_create(box);
-  lv_label_set_text(label_papp_val, "0.4");
-  lv_obj_set_style_text_font(label_papp_val, &lv_font_montserrat_40, 0);
-  lv_obj_set_style_text_color(label_papp_val, lv_color_white(), 0);
-  lv_obj_align(label_papp_val, LV_ALIGN_CENTER, -10, -8); 
+  // Valeur
+  etiquette_papp_valeur = lv_label_create(boite);
+  lv_label_set_text(etiquette_papp_valeur, "0.4");
+  lv_obj_set_style_text_font(etiquette_papp_valeur, &lv_font_montserrat_40, 0);
+  lv_obj_set_style_text_color(etiquette_papp_valeur, lv_color_white(), 0);
+  lv_obj_align(etiquette_papp_valeur, LV_ALIGN_CENTER, -10, -8); 
 
-  // Unit
-  label_papp_unit = lv_label_create(box);
-  lv_label_set_text(label_papp_unit, "KW");
-  lv_obj_set_style_text_font(label_papp_unit, &lv_font_montserrat_20, 0);
-  lv_obj_set_style_text_color(label_papp_unit, lv_color_white(), 0);
-  lv_obj_align_to(label_papp_unit, label_papp_val, LV_ALIGN_OUT_RIGHT_BOTTOM, 5, -5); 
+  // Unité
+  etiquette_papp_unite = lv_label_create(boite);
+  lv_label_set_text(etiquette_papp_unite, "KW");
+  lv_obj_set_style_text_font(etiquette_papp_unite, &lv_font_montserrat_20, 0);
+  lv_obj_set_style_text_color(etiquette_papp_unite, lv_color_white(), 0);
+  lv_obj_align_to(etiquette_papp_unite, etiquette_papp_valeur, LV_ALIGN_OUT_RIGHT_BOTTOM, 5, -5); 
 
-  // Subtitle
-  lv_obj_t *lbl_inst = lv_label_create(box);
-  lv_label_set_text(lbl_inst, "INSTANT");
-  lv_obj_set_style_text_color(lbl_inst, lv_color_white(), 0);
-  lv_obj_set_style_text_font(lbl_inst, &lv_font_montserrat_16, 0); 
-  lv_obj_align(lbl_inst, LV_ALIGN_BOTTOM_MID, 0, 11);
+  // Sous-titre
+  lv_obj_t *etiquette_inst = lv_label_create(boite);
+  lv_label_set_text(etiquette_inst, "INSTANT");
+  lv_obj_set_style_text_color(etiquette_inst, lv_color_white(), 0);
+  lv_obj_set_style_text_font(etiquette_inst, &lv_font_montserrat_16, 0); 
+  lv_obj_align(etiquette_inst, LV_ALIGN_BOTTOM_MID, 0, 11);
 
-  // BARS
-  int bar_w = 28;
-  int gap = 16;
-  int start_x = -((6 * bar_w + 5 * gap) / 2) + (bar_w/2); 
+  // BARRES
+  int largeur_barre = 28;
+  int espacement = 16;
+  int x_depart = -((6 * largeur_barre + 5 * espacement) / 2) + (largeur_barre/2); 
 
-  // Mock Values
-  int mock_vals[6] = {500, 1500, 3200, 800, 4500, 2100};
-  for(int k=0; k<6; k++) meter_values[k] = mock_vals[k];
+  // Valeurs fictives
+  int valeurs_simulees[6] = {500, 1500, 3200, 800, 4500, 2100};
+  for(int k=0; k<6; k++) valeurs_jauge[k] = valeurs_simulees[k];
 
   for(int i=0; i<6; i++) {
-      int val = meter_values[i];
+      int val = valeurs_jauge[i];
       if(val > 9000) val = 9000;
-      int h = (val * 100) / 9000;
-      if(h < 5) h = 5;
+      int hauteur = (val * 100) / 9000;
+      if(hauteur < 5) hauteur = 5;
 
-      meter_bars[i] = lv_bar_create(screen_meter);
-      lv_bar_set_range(meter_bars[i], 0, 100);
-      lv_bar_set_value(meter_bars[i], 100, LV_ANIM_OFF);
+      barres_jauge[i] = lv_bar_create(ecran_jauge);
+      lv_bar_set_range(barres_jauge[i], 0, 100);
+      lv_bar_set_value(barres_jauge[i], 100, LV_ANIM_OFF);
       
-      lv_obj_set_size(meter_bars[i], bar_w, h); // Dynamic Height
-      lv_obj_set_style_radius(meter_bars[i], 2, LV_PART_MAIN);      
-      lv_obj_set_style_radius(meter_bars[i], 2, LV_PART_INDICATOR); 
+      lv_obj_set_size(barres_jauge[i], largeur_barre, hauteur); // Hauteur dynamique
+      lv_obj_set_style_radius(barres_jauge[i], 2, LV_PART_MAIN);      
+      lv_obj_set_style_radius(barres_jauge[i], 2, LV_PART_INDICATOR); 
       
       // Cyan (0,255,255)
-      lv_obj_set_style_bg_color(meter_bars[i], lv_color_make(0, 255, 255), LV_PART_INDICATOR);
-      lv_obj_set_style_bg_grad_color(meter_bars[i], lv_color_make(0, 255, 255), LV_PART_INDICATOR); 
-      lv_obj_set_style_bg_grad_dir(meter_bars[i], LV_GRAD_DIR_NONE, LV_PART_INDICATOR);
-      lv_obj_set_style_bg_opa(meter_bars[i], LV_OPA_TRANSP, LV_PART_MAIN);
+      lv_obj_set_style_bg_color(barres_jauge[i], lv_color_make(0, 255, 255), LV_PART_INDICATOR);
+      lv_obj_set_style_bg_grad_color(barres_jauge[i], lv_color_make(0, 255, 255), LV_PART_INDICATOR); 
+      lv_obj_set_style_bg_grad_dir(barres_jauge[i], LV_GRAD_DIR_NONE, LV_PART_INDICATOR);
+      lv_obj_set_style_bg_opa(barres_jauge[i], LV_OPA_TRANSP, LV_PART_MAIN);
 
-      int x_pos = start_x + i * (bar_w + gap);
+      int position_x = x_depart + i * (largeur_barre + espacement);
       
-      // Smile Effect
-      int y_off = -15; 
-      if(i==1 || i==4) y_off = 10; 
-      if(i==2 || i==3) y_off = 25; 
+      // Effet de sourire
+      int decalage_y = -15; 
+      if(i==1 || i==4) decalage_y = 10; 
+      if(i==2 || i==3) decalage_y = 25; 
 
-      lv_obj_align(meter_bars[i], LV_ALIGN_BOTTOM_MID, x_pos, -50 + y_off); 
+      lv_obj_align(barres_jauge[i], LV_ALIGN_BOTTOM_MID, position_x, -50 + decalage_y); 
 
-      // Label Value
-      meter_labels_val[i] = lv_label_create(screen_meter);
+      // Étiquette de valeur
+      etiquettes_jauge_valeur[i] = lv_label_create(ecran_jauge);
       float kw_bar = val / 1000.0f;
       int i_b = (int)kw_bar; int d_b = (int)((kw_bar - i_b)*10);
-      lv_label_set_text_fmt(meter_labels_val[i], "%d.%d", i_b, d_b);
-      lv_obj_set_style_text_color(meter_labels_val[i], lv_color_white(), 0);
-      lv_obj_align_to(meter_labels_val[i], meter_bars[i], LV_ALIGN_OUT_TOP_MID, 0, -5);
+      lv_label_set_text_fmt(etiquettes_jauge_valeur[i], "%d.%d", i_b, d_b);
+      lv_obj_set_style_text_color(etiquettes_jauge_valeur[i], lv_color_white(), 0);
+      lv_obj_align_to(etiquettes_jauge_valeur[i], barres_jauge[i], LV_ALIGN_OUT_TOP_MID, 0, -5);
 
-      // Label Time
-      meter_labels_time[i] = lv_label_create(screen_meter);
-      lv_label_set_text_fmt(meter_labels_time[i], "%d", (6-i)*10); 
-      lv_obj_set_style_text_color(meter_labels_time[i], lv_color_white(), 0); 
-      lv_obj_align_to(meter_labels_time[i], meter_bars[i], LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+      // Étiquette de temps
+      etiquettes_jauge_temps[i] = lv_label_create(ecran_jauge);
+      lv_label_set_text_fmt(etiquettes_jauge_temps[i], "%d", (6-i)*10); 
+      lv_obj_set_style_text_color(etiquettes_jauge_temps[i], lv_color_white(), 0); 
+      lv_obj_align_to(etiquettes_jauge_temps[i], barres_jauge[i], LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
   }
 }
 
-// --- SCREEN: INDEX (PAGE 1) ---
+// Crée l'écran des compteurs (Page 1) affichant les index Base, Heures Pleines et Heures Creuses.
 void create_screen_index() {
-  screen_index = lv_obj_create(NULL);
-  lv_obj_set_style_bg_color(screen_index, lv_color_black(), 0);
-  lv_obj_set_style_bg_opa(screen_index, LV_OPA_COVER, 0);
+  ecran_index = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(ecran_index, lv_color_black(), 0);
+  lv_obj_set_style_bg_opa(ecran_index, LV_OPA_COVER, 0);
 
-  lv_obj_t *title = lv_label_create(screen_index);
-  lv_label_set_text(title, "INDEX kWh");
-  lv_obj_set_style_text_color(title, lv_color_white(), 0);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 30);
-  lv_obj_set_style_text_letter_space(title, 2, 0); 
+  lv_obj_t *titre = lv_label_create(ecran_index);
+  lv_label_set_text(titre, "INDEX kWh");
+  lv_obj_set_style_text_color(titre, lv_color_white(), 0);
+  lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 30);
+  lv_obj_set_style_text_letter_space(titre, 2, 0); 
 
   // Base
-  label_index_base = lv_label_create(screen_index);
-  lv_label_set_text(label_index_base, "BASE: -----");
-  lv_obj_set_style_text_color(label_index_base, lv_color_white(), 0);
-  lv_obj_align(label_index_base, LV_ALIGN_CENTER, 0, -40); 
-  lv_obj_set_style_text_letter_space(label_index_base, 1, 0);
+  etiquette_index_base = lv_label_create(ecran_index);
+  lv_label_set_text(etiquette_index_base, "BASE: -----");
+  lv_obj_set_style_text_color(etiquette_index_base, lv_color_white(), 0);
+  lv_obj_align(etiquette_index_base, LV_ALIGN_CENTER, 0, -40); 
+  lv_obj_set_style_text_letter_space(etiquette_index_base, 1, 0);
 
-  // HP
-  label_index_hp = lv_label_create(screen_index);
-  lv_label_set_text(label_index_hp, "HP: -----");
-  lv_obj_set_style_text_color(label_index_hp, lv_color_white(), 0);
-  lv_obj_align(label_index_hp, LV_ALIGN_CENTER, 0, 0); 
-  lv_obj_set_style_text_letter_space(label_index_hp, 1, 0);
+  // Heures Pleines
+  etiquette_index_hp = lv_label_create(ecran_index);
+  lv_label_set_text(etiquette_index_hp, "HP: -----");
+  lv_obj_set_style_text_color(etiquette_index_hp, lv_color_white(), 0);
+  lv_obj_align(etiquette_index_hp, LV_ALIGN_CENTER, 0, 0); 
+  lv_obj_set_style_text_letter_space(etiquette_index_hp, 1, 0);
 
-  // HC
-  label_index_hc = lv_label_create(screen_index);
-  lv_label_set_text(label_index_hc, "HC: -----");
-  lv_obj_set_style_text_color(label_index_hc, lv_color_white(), 0);
-  lv_obj_align(label_index_hc, LV_ALIGN_CENTER, 0, 40); 
-  lv_obj_set_style_text_letter_space(label_index_hc, 1, 0);
+  // Heures Creuses
+  etiquette_index_hc = lv_label_create(ecran_index);
+  lv_label_set_text(etiquette_index_hc, "HC: -----");
+  lv_obj_set_style_text_color(etiquette_index_hc, lv_color_white(), 0);
+  lv_obj_align(etiquette_index_hc, LV_ALIGN_CENTER, 0, 40); 
+  lv_obj_set_style_text_letter_space(etiquette_index_hc, 1, 0);
 }
 
-// --- SCREEN: INFO (PAGE 4) ---
+// Crée l'écran d'informations (Page 4) affichant les statistiques de tension et d'intensité.
 void create_screen_info() {
-  screen_info = lv_obj_create(NULL);
-  lv_obj_set_style_bg_color(screen_info, lv_color_black(), 0);
+  ecran_info = lv_obj_create(NULL);
+  lv_obj_set_style_bg_color(ecran_info, lv_color_black(), 0);
   
-  lv_obj_t * cont = lv_obj_create(screen_info);
-  lv_obj_set_size(cont, 240, 240);
-  lv_obj_center(cont);
-  lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(cont, 0, 0);
-  lv_obj_set_style_pad_row(cont, 10, 0);
-  lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_t * conteneur = lv_obj_create(ecran_info);
+  lv_obj_set_size(conteneur, 240, 240);
+  lv_obj_center(conteneur);
+  lv_obj_set_flex_flow(conteneur, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(conteneur, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_bg_opa(conteneur, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(conteneur, 0, 0);
+  lv_obj_set_style_pad_row(conteneur, 10, 0);
+  lv_obj_clear_flag(conteneur, LV_OBJ_FLAG_SCROLLABLE);
 
-  lv_obj_t *title = lv_label_create(cont);
-  lv_label_set_text(title, "INFOS");
-  lv_obj_set_style_text_color(title, lv_color_white(), 0);
-  lv_obj_add_style(title, &style_text_large, 0);
+  lv_obj_t *titre = lv_label_create(conteneur);
+  lv_label_set_text(titre, "INFOS");
+  lv_obj_set_style_text_color(titre, lv_color_white(), 0);
+  lv_obj_add_style(titre, &style_texte_grand, 0);
 
   // Volts
-  lv_obj_t *lbl_v = lv_label_create(cont);
-  lv_label_set_text(lbl_v, "TENSION");
-  lv_obj_set_style_text_color(lbl_v, lv_color_white(), 0);
-  lv_obj_add_style(lbl_v, &style_text_large, 0);
+  lv_obj_t *etiquette_v = lv_label_create(conteneur);
+  lv_label_set_text(etiquette_v, "TENSION");
+  lv_obj_set_style_text_color(etiquette_v, lv_color_white(), 0);
+  lv_obj_add_style(etiquette_v, &style_texte_grand, 0);
   
-  label_volt = lv_label_create(cont);
-  lv_label_set_text(label_volt, "--- V");
-  lv_obj_set_style_text_color(label_volt, lv_color_white(), 0);
-  lv_obj_add_style(label_volt, &style_text_xl, 0);
+  etiquette_tension = lv_label_create(conteneur);
+  lv_label_set_text(etiquette_tension, "--- V");
+  lv_obj_set_style_text_color(etiquette_tension, lv_color_white(), 0);
+  lv_obj_add_style(etiquette_tension, &style_texte_tg, 0);
 
-  label_volt_stats = lv_label_create(cont);
-  lv_label_set_text(label_volt_stats, "Min:-      Avg:-      Max:-");
-  lv_obj_set_style_text_color(label_volt_stats, lv_color_white(), 0); 
-  lv_obj_set_style_text_font(label_volt_stats, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_pad_bottom(label_volt_stats, 10, 0);
+  etiquette_stats_tension = lv_label_create(conteneur);
+  lv_label_set_text(etiquette_stats_tension, "Min:-      Avg:-      Max:-");
+  lv_obj_set_style_text_color(etiquette_stats_tension, lv_color_white(), 0); 
+  lv_obj_set_style_text_font(etiquette_stats_tension, LV_FONT_DEFAULT, 0);
+  lv_obj_set_style_pad_bottom(etiquette_stats_tension, 10, 0);
 
-  // Amps
-  lv_obj_t *lbl_a = lv_label_create(cont);
-  lv_label_set_text(lbl_a, "INTENSITE");
-  lv_obj_set_style_text_color(lbl_a, lv_color_white(), 0);
-  lv_obj_add_style(lbl_a, &style_text_large, 0);
+  // Ampères
+  lv_obj_t *etiquette_a = lv_label_create(conteneur);
+  lv_label_set_text(etiquette_a, "INTENSITE");
+  lv_obj_set_style_text_color(etiquette_a, lv_color_white(), 0);
+  lv_obj_add_style(etiquette_a, &style_texte_grand, 0);
 
-  label_amp = lv_label_create(cont);
-  lv_label_set_text(label_amp, "-- A");
-  lv_obj_set_style_text_color(label_amp, lv_color_white(), 0);
-  lv_obj_add_style(label_amp, &style_text_xl, 0);
+  etiquette_intensite = lv_label_create(conteneur);
+  lv_label_set_text(etiquette_intensite, "-- A");
+  lv_obj_set_style_text_color(etiquette_intensite, lv_color_white(), 0);
+  lv_obj_add_style(etiquette_intensite, &style_texte_tg, 0);
 
-  label_amp_stats = lv_label_create(cont);
-  lv_label_set_text(label_amp_stats, "Min:-      Avg:-      Max:-");
-  lv_obj_set_style_text_color(label_amp_stats, lv_color_white(), 0); 
-  lv_obj_set_style_text_font(label_amp_stats, LV_FONT_DEFAULT, 0);
+  etiquette_stats_intensite = lv_label_create(conteneur);
+  lv_label_set_text(etiquette_stats_intensite, "Min:-      Avg:-      Max:-");
+  lv_obj_set_style_text_color(etiquette_stats_intensite, lv_color_white(), 0); 
+  lv_obj_set_style_text_font(etiquette_stats_intensite, LV_FONT_DEFAULT, 0);
 }
 
-// --- SCREEN: WEEK (PAGE 2) ---
+// Crée l'écran de la semaine (Page 2) avec un graphique circulaire sur les 7 derniers jours.
 void create_screen_week() {
-    screen_week = lv_obj_create(NULL);
-    lv_obj_set_style_pad_all(screen_week, 0, 0); 
-    lv_obj_set_style_bg_color(screen_week, lv_color_black(), 0);
+    ecran_semaine = lv_obj_create(NULL);
+    lv_obj_set_style_pad_all(ecran_semaine, 0, 0); 
+    lv_obj_set_style_bg_color(ecran_semaine, lv_color_black(), 0);
 
-    lv_obj_t * radial_area = lv_obj_create(screen_week);
-    lv_obj_set_size(radial_area, 360, 360);
-    lv_obj_center(radial_area);
-    lv_obj_set_style_bg_opa(radial_area, LV_OPA_TRANSP, 0); 
-    lv_obj_set_style_border_width(radial_area, 0, 0);
-    lv_obj_clear_flag(radial_area, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t * zone_radiale = lv_obj_create(ecran_semaine);
+    lv_obj_set_size(zone_radiale, 360, 360);
+    lv_obj_center(zone_radiale);
+    lv_obj_set_style_bg_opa(zone_radiale, LV_OPA_TRANSP, 0); 
+    lv_obj_set_style_border_width(zone_radiale, 0, 0);
+    lv_obj_clear_flag(zone_radiale, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Central Disc
-    lv_obj_t * central_disc = lv_obj_create(screen_week);
-    lv_obj_set_size(central_disc, 120, 120);
-    lv_obj_set_pos(central_disc, 120, 120); // Manual centered pos (approx 360/2 - 60 = 120) -> But cx is 165 ? 
-    // Wait, 120,120 is relative to screen (240x240 usually?) No 360x360 S3 screen.
-    // If screen is 360x360 circle. Center is 180,180.
-    // Disc 120x120. TopLeft = 180-60=120. So 120,120 is correct for absolute center of 360px screen.
-    lv_obj_set_style_radius(central_disc, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(central_disc, lv_color_white(), 0);
-    lv_obj_set_style_border_width(central_disc, 0, 0);
+    // Disque central
+    lv_obj_t * disque_central = lv_obj_create(ecran_semaine);
+    lv_obj_set_size(disque_central, 120, 120);
+    lv_obj_set_pos(disque_central, 120, 120); // Position manuelle centrée (environ 360/2 - 60 = 120) -> Mais cx est 165 ? 
+    // Attendez, 120,120 est relatif à l'écran (240x240 d'habitude ?) Non, écran S3 360x360.
+    // Si l'écran est un cercle 360x360. Le centre est 180,180.
+    // Disque 120x120. HautGauche = 180-60=120. Donc 120,120 est correct pour le centre absolu de l'écran 360px.
+    lv_obj_set_style_radius(disque_central, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(disque_central, lv_color_white(), 0);
+    lv_obj_set_style_border_width(disque_central, 0, 0);
 
-    lv_obj_t * title_shadow = lv_label_create(screen_week);
-    lv_label_set_text(title_shadow, "CONSO\nSEMAINE\nkWh");
-    lv_obj_set_style_text_align(title_shadow, LV_TEXT_ALIGN_CENTER, 0); 
-    lv_obj_align(title_shadow, LV_ALIGN_CENTER, 0, 0); 
-    lv_obj_set_style_text_color(title_shadow, lv_color_black(), 0); 
+    lv_obj_t * ombre_titre = lv_label_create(ecran_semaine);
+    lv_label_set_text(ombre_titre, "CONSO\nSEMAINE\nkWh");
+    lv_obj_set_style_text_align(ombre_titre, LV_TEXT_ALIGN_CENTER, 0); 
+    lv_obj_align(ombre_titre, LV_ALIGN_CENTER, 0, 0); 
+    lv_obj_set_style_text_color(ombre_titre, lv_color_black(), 0); 
 
     // Styles
-    static lv_style_t style_line_week;
-    lv_style_init(&style_line_week);
-    lv_style_set_line_width(&style_line_week, 30); 
-    lv_style_set_line_rounded(&style_line_week, true);
+    static lv_style_t style_ligne_semaine;
+    lv_style_init(&style_ligne_semaine);
+    lv_style_set_line_width(&style_ligne_semaine, 30); 
+    lv_style_set_line_rounded(&style_ligne_semaine, true);
 
-    time_t now;
-    time(&now);
-    struct tm *t = localtime(&now);
-    int current_day_idx = (t->tm_wday == 0) ? 6 : (t->tm_wday - 1); // 0=Lundi, 6=Dimanche
+    time_t maintenant_semaine;
+    time(&maintenant_semaine);
+    struct tm *temps_semaine = localtime(&maintenant_semaine);
+    int index_jour_actuel = (temps_semaine->tm_wday == 0) ? 6 : (temps_semaine->tm_wday - 1); // 0=Lundi, 6=Dimanche
 
-    int cx = 165; // Correct center for 360px screen
-    int cy = 165; 
-    int radius_start = 70; 
-    int max_len = 70;
+    int centre_x = 165; // Centre correct pour l'écran 360px
+    int centre_y = 165; 
+    int rayon_depart = 70; 
+    int longueur_max = 70;
 
     // Create global highlight, initially hidden (creé AVANT les textes pour etre EN DESSOUS)
-    highlight_week = lv_obj_create(radial_area);
-    lv_obj_set_size(highlight_week, 24, 24);
-    lv_obj_set_style_radius(highlight_week, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(highlight_week, lv_color_hex(0xFF0000), 0); 
-    lv_obj_set_style_border_width(highlight_week, 0, 0);
-    lv_obj_clear_flag(highlight_week, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(highlight_week, LV_OBJ_FLAG_HIDDEN);
+    surbrillance_semaine = lv_obj_create(zone_radiale);
+    lv_obj_set_size(surbrillance_semaine, 24, 24);
+    lv_obj_set_style_radius(surbrillance_semaine, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(surbrillance_semaine, lv_color_hex(0xFF0000), 0); 
+    lv_obj_set_style_border_width(surbrillance_semaine, 0, 0);
+    lv_obj_clear_flag(surbrillance_semaine, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(surbrillance_semaine, LV_OBJ_FLAG_HIDDEN);
 
     for(int i=0; i<7; i++) {
         float angle_deg = -90.0f + (i * 360.0f / 7.0f);
         float angle_rad = angle_deg * (PI / 180.0f);
         
-        int value = linky_data.history_week[i]; // Utiliser la vraie donnee depuis la carte SD (kWh)
+        int valeur = donnees_linky.historique_semaine[i]; // Utiliser la vraie donnee depuis la carte SD (kWh)
 
         // Limiter la valeur pour l'affichage (ex: max 60 kWh/jour)
-        int max_val_scale = 60;
-        int display_val = value;
-        if(display_val > max_val_scale) display_val = max_val_scale;
+        int echelle_val_max = 60;
+        int val_affichage = valeur;
+        if(val_affichage > echelle_val_max) val_affichage = echelle_val_max;
 
-        // Hack Color: Vert (Faible) -> Rouge (Fort) ! (rappel: ecran inverse RGB)
+        // Ajustement de couleur: Vert (Faible) -> Rouge (Fort) ! (rappel: ecran inverse RGB)
         // Ratio de consommation
-        uint8_t ratio = (display_val * 255) / max_val_scale; 
+        uint8_t ratio = (val_affichage * 255) / echelle_val_max; 
         
-        // On veut Green (Low) -> Red (High). 
+        // Nous voulons Vert (Faible) -> Rouge (Fort). 
         // Mais l'écran inverse les couleurs:
         // Envoyer Bleu (0,0,255) => Affiche Vert
         // Envoyer Vert (0,255,0) => Affiche Bleu
-        // Envoyer Rouge (255,0,0) => Affiche Cyan ? Wait.
-        // D'apres l'autre code: Green on screen is Blue(0,0,255). Red on screen is Green(0,255,0).
-        lv_color_t color = lv_color_make(0, ratio, 255 - ratio);
+        // Envoyer Rouge (255,0,0) => Affiche Cyan ? Attendez.
+        // D'après l'autre code : Le vert sur l'écran est Bleu (0,0,255). Le rouge sur l'écran est Vert (0,255,0).
+        lv_color_t couleur = lv_color_make(0, ratio, 255 - ratio);
 
-        int bar_len = (display_val * max_len) / max_val_scale;
+        int longueur_barre = (val_affichage * longueur_max) / echelle_val_max;
         
-        week_points[i][0].x = cx + (int)(cos(angle_rad) * radius_start);
-        week_points[i][0].y = cy + (int)(sin(angle_rad) * radius_start);
-        week_points[i][1].x = cx + (int)(cos(angle_rad) * (radius_start + bar_len));
-        week_points[i][1].y = cy + (int)(sin(angle_rad) * (radius_start + bar_len));
+        points_semaine[i][0].x = centre_x + (int)(cos(angle_rad) * rayon_depart);
+        points_semaine[i][0].y = centre_y + (int)(sin(angle_rad) * rayon_depart);
+        points_semaine[i][1].x = centre_x + (int)(cos(angle_rad) * (rayon_depart + longueur_barre));
+        points_semaine[i][1].y = centre_y + (int)(sin(angle_rad) * (rayon_depart + longueur_barre));
 
-        week_lines[i] = lv_line_create(radial_area);
-        lv_line_set_points(week_lines[i], week_points[i], 2);
-        lv_obj_add_style(week_lines[i], &style_line_week, 0);
-        lv_obj_set_style_line_color(week_lines[i], color, 0);
+        lignes_semaine[i] = lv_line_create(zone_radiale);
+        lv_line_set_points(lignes_semaine[i], points_semaine[i], 2);
+        lv_obj_add_style(lignes_semaine[i], &style_ligne_semaine, 0);
+        lv_obj_set_style_line_color(lignes_semaine[i], couleur, 0);
 
-        int label_radius = 160;
-        int lx = cx + (int)(cos(angle_rad) * label_radius);
-        int ly = cy + (int)(sin(angle_rad) * label_radius);
+        int rayon_etiquette = 160;
+        int coord_x = centre_x + (int)(cos(angle_rad) * rayon_etiquette);
+        int coord_y = centre_y + (int)(sin(angle_rad) * rayon_etiquette);
 
-        label_days[i] = lv_label_create(radial_area); 
-        lv_label_set_text(label_days[i], day_names[i]);
-        lv_obj_set_style_text_color(label_days[i], lv_color_white(), 0);
-        lv_obj_set_pos(label_days[i], lx - 7, ly - 7);
+        etiquettes_jours[i] = lv_label_create(zone_radiale); 
+        lv_label_set_text(etiquettes_jours[i], noms_jours[i]);
+        lv_obj_set_style_text_color(etiquettes_jours[i], lv_color_white(), 0);
+        lv_obj_set_pos(etiquettes_jours[i], coord_x - 7, coord_y - 7);
         
-        lv_obj_t * val_lbl = lv_label_create(radial_area);
-        lv_label_set_text_fmt(val_lbl, "%d", value);  // En kW direct
-        lv_obj_set_style_text_color(val_lbl, lv_color_black(), 0); 
+        lv_obj_t * etiquette_val = lv_label_create(zone_radiale);
+        lv_label_set_text_fmt(etiquette_val, "%d", valeur);  // En kW direct
+        lv_obj_set_style_text_color(etiquette_val, lv_color_black(), 0); 
         
         // Rapprochement Centre (Dans le disque blanc)
-        int val_radius = 50; 
-        int vx = cx + (int)(cos(angle_rad) * val_radius);
-        int vy = cy + (int)(sin(angle_rad) * val_radius);
-        lv_obj_set_pos(val_lbl, vx - 10, vy - 7);
+        int rayon_valeur = 50; 
+        int val_x = centre_x + (int)(cos(angle_rad) * rayon_valeur);
+        int val_y = centre_y + (int)(sin(angle_rad) * rayon_valeur);
+        lv_obj_set_pos(etiquette_val, val_x - 10, val_y - 7);
     }
 }
 
-// --- SCREEN: HISTORY (PAGE 3) ---
+// Crée l'écran de l'historique annuel (Page 3) avec un graphique circulaire des 12 derniers mois.
 void create_screen_history() {
-    screen_history = lv_obj_create(NULL);
-    lv_obj_set_style_pad_all(screen_history, 0, 0); 
-    lv_obj_set_style_bg_color(screen_history, lv_color_black(), 0); // Important for background
+    ecran_historique = lv_obj_create(NULL);
+    lv_obj_set_style_pad_all(ecran_historique, 0, 0); 
+    lv_obj_set_style_bg_color(ecran_historique, lv_color_black(), 0); // Important pour l'arrière-plan
 
-    lv_obj_t * radial_area = lv_obj_create(screen_history);
-    lv_obj_set_size(radial_area, 360, 360);
-    lv_obj_center(radial_area);
-    lv_obj_set_style_bg_opa(radial_area, LV_OPA_TRANSP, 0); 
-    lv_obj_set_style_border_width(radial_area, 0, 0);
-    lv_obj_clear_flag(radial_area, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t * zone_radiale = lv_obj_create(ecran_historique);
+    lv_obj_set_size(zone_radiale, 360, 360);
+    lv_obj_center(zone_radiale);
+    lv_obj_set_style_bg_opa(zone_radiale, LV_OPA_TRANSP, 0); 
+    lv_obj_set_style_border_width(zone_radiale, 0, 0);
+    lv_obj_clear_flag(zone_radiale, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t * central_disc = lv_obj_create(screen_history);
-    lv_obj_set_size(central_disc, 120, 120);
-    lv_obj_center(central_disc);
-    lv_obj_set_style_radius(central_disc, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(central_disc, lv_color_white(), 0);
-    lv_obj_set_style_border_width(central_disc, 0, 0);
+    // Disque central
+    lv_obj_t * disque_central = lv_obj_create(ecran_historique);
+    lv_obj_set_size(disque_central, 120, 120);
+    lv_obj_center(disque_central);
+    lv_obj_set_style_radius(disque_central, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(disque_central, lv_color_white(), 0);
+    lv_obj_set_style_border_width(disque_central, 0, 0);
 
-    lv_obj_t * title_shadow = lv_label_create(screen_history);
-    lv_label_set_text(title_shadow, "CONSO\nANNUELLE\nkWh");
-    lv_obj_set_style_text_align(title_shadow, LV_TEXT_ALIGN_CENTER, 0); 
-    lv_obj_align(title_shadow, LV_ALIGN_CENTER, 0, 0); 
-    lv_obj_set_style_text_color(title_shadow, lv_color_black(), 0); 
-    lv_obj_add_style(title_shadow, &style_text_large, 0);
+    lv_obj_t * ombre_titre = lv_label_create(ecran_historique);
+    lv_label_set_text(ombre_titre, "CONSO\nANNUELLE\nkWh");
+    lv_obj_set_style_text_align(ombre_titre, LV_TEXT_ALIGN_CENTER, 0); 
+    lv_obj_align(ombre_titre, LV_ALIGN_CENTER, 0, 0); 
+    lv_obj_set_style_text_color(ombre_titre, lv_color_black(), 0); 
+    lv_obj_add_style(ombre_titre, &style_texte_grand, 0);
 
-    static lv_style_t style_line;
-    lv_style_init(&style_line);
-    lv_style_set_line_width(&style_line, 28); 
-    lv_style_set_line_rounded(&style_line, true);
+    static lv_style_t style_ligne;
+    lv_style_init(&style_ligne);
+    lv_style_set_line_width(&style_ligne, 28); 
+    lv_style_set_line_rounded(&style_ligne, true);
 
-    time_t now;
-    time(&now);
-    struct tm *t = localtime(&now);
-    int current_month_idx = t->tm_mon; // 0=Janvier, 11=Decembre
+    time_t maintenant_annuel;
+    time(&maintenant_annuel);
+    struct tm *temps_annuel = localtime(&maintenant_annuel);
+    int index_mois_actuel = temps_annuel->tm_mon; // 0=Janvier, 11=Decembre
 
-    int cx = 165; 
-    int cy = 165; 
+    int centre_x = 165; 
+    int centre_y = 165; 
 
     // Create global highlight, initially hidden (creé AVANT les textes pour etre EN DESSOUS)
-    highlight_month = lv_obj_create(radial_area);
-    lv_obj_set_size(highlight_month, 24, 24);
-    lv_obj_set_style_radius(highlight_month, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(highlight_month, lv_color_hex(0xFF0000), 0); 
-    lv_obj_set_style_border_width(highlight_month, 0, 0);
-    lv_obj_clear_flag(highlight_month, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(highlight_month, LV_OBJ_FLAG_HIDDEN);
+    surbrillance_mois = lv_obj_create(zone_radiale);
+    lv_obj_set_size(surbrillance_mois, 24, 24);
+    lv_obj_set_style_radius(surbrillance_mois, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(surbrillance_mois, lv_color_hex(0xFF0000), 0); 
+    lv_obj_set_style_border_width(surbrillance_mois, 0, 0);
+    lv_obj_clear_flag(surbrillance_mois, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(surbrillance_mois, LV_OBJ_FLAG_HIDDEN);
     
     for(int i=0; i<12; i++) {
         float angle_deg = (i + 1) * 30; 
         float angle_rad = angle_deg * (PI / 180.0f);
 
-        int value_wh = linky_data.history_year[i]; 
-        int value = value_wh / 1000; // Passage en kWh pour le graph
+        int valeur_wh = donnees_linky.historique_annee[i]; 
+        int valeur = valeur_wh / 1000; // Passage en kWh pour le graph
         
-        int max_val_scale = 300; // max 300 kWh par mois
-        int display_val = value;
-        if(display_val > max_val_scale) display_val = max_val_scale;
+        int echelle_max = 300; // max 300 kWh par mois
+        int val_affichage = valeur;
+        if(val_affichage > echelle_max) val_affichage = echelle_max;
 
-        uint8_t ratio = (display_val * 255) / max_val_scale; 
+        uint8_t ratio = (val_affichage * 255) / echelle_max; 
         
-        // Color hack (Vert a Rouge)
-        lv_color_t bar_color = lv_color_make(0, ratio, 255 - ratio);
+        // Ajustement de couleur (Vert a Rouge)
+        lv_color_t couleur_barre = lv_color_make(0, ratio, 255 - ratio);
 
-        int hole = 70; 
+        int trou = 70; 
         // Normaliser la taille de la barre
-        int bar_len = (display_val * 70) / max_val_scale;
+        int longueur_barre = (val_affichage * 70) / echelle_max;
         
-        int x_start = cx + (int)(sin(angle_rad) * hole);
-        int y_start = cy - (int)(cos(angle_rad) * hole);
-        int x_end = cx + (int)(sin(angle_rad) * (hole + bar_len));
-        int y_end = cy - (int)(cos(angle_rad) * (hole + bar_len));
+        int x_debut = centre_x + (int)(sin(angle_rad) * trou);
+        int y_debut = centre_y - (int)(cos(angle_rad) * trou);
+        int x_fin = centre_x + (int)(sin(angle_rad) * (trou + longueur_barre));
+        int y_fin = centre_y - (int)(cos(angle_rad) * (trou + longueur_barre));
 
-        history_points[i][0].x = x_start;
-        history_points[i][0].y = y_start;
-        history_points[i][1].x = x_end;
-        history_points[i][1].y = y_end;
+        points_historique[i][0].x = x_debut;
+        points_historique[i][0].y = y_debut;
+        points_historique[i][1].x = x_fin;
+        points_historique[i][1].y = y_fin;
 
-        history_lines[i] = lv_line_create(radial_area);
-        lv_line_set_points(history_lines[i], history_points[i], 2);
-        lv_obj_add_style(history_lines[i], &style_line, 0);
-        lv_obj_set_style_line_color(history_lines[i], bar_color, 0);
+        lignes_historique[i] = lv_line_create(zone_radiale);
+        lv_line_set_points(lignes_historique[i], points_historique[i], 2);
+        lv_obj_add_style(lignes_historique[i], &style_ligne, 0);
+        lv_obj_set_style_line_color(lignes_historique[i], couleur_barre, 0);
         
-        int label_radius = 160; 
-        int lx = cx + (int)(sin(angle_rad) * label_radius);
-        int ly = cy - (int)(cos(angle_rad) * label_radius);
+        int rayon_etiquette = 160; 
+        int coord_x = centre_x + (int)(sin(angle_rad) * rayon_etiquette);
+        int coord_y = centre_y - (int)(cos(angle_rad) * rayon_etiquette);
 
-        label_months[i] = lv_label_create(radial_area); 
-        lv_label_set_text(label_months[i], month_letters[i]);
-        lv_obj_set_pos(label_months[i], lx - 6, ly - 9); 
+        etiquettes_mois[i] = lv_label_create(zone_radiale); 
+        lv_label_set_text(etiquettes_mois[i], lettres_mois[i]);
+        lv_obj_set_pos(etiquettes_mois[i], coord_x - 6, coord_y - 9); 
         
         // Rapprochement Centre
-        int val_radius = 50; 
-        int vx = cx + (int)(sin(angle_rad) * val_radius);
-        int vy = cy - (int)(cos(angle_rad) * val_radius);
+        int rayon_valeur = 50; 
+        int val_x = centre_x + (int)(sin(angle_rad) * rayon_valeur);
+        int val_y = centre_y - (int)(cos(angle_rad) * rayon_valeur);
 
-        lv_obj_t * val_lbl = lv_label_create(radial_area);
-        lv_label_set_text_fmt(val_lbl, "%d", value); // En kW direct
-        lv_obj_set_style_text_color(val_lbl, lv_color_black(), 0); 
-        lv_obj_set_pos(val_lbl, vx - 10, vy - 7); 
+        lv_obj_t * etiquette_val = lv_label_create(zone_radiale);
+        lv_label_set_text_fmt(etiquette_val, "%d", valeur); // En kW direct
+        lv_obj_set_style_text_color(etiquette_val, lv_color_black(), 0); 
+        lv_obj_set_pos(etiquette_val, val_x - 10, val_y - 7); 
     }
 }
 
-// --- SCREEN: WIFI (PAGE 5) ---
-static void ta_event_cb(lv_event_t * e) {
+// Gère les événements tactiles sur les zones de texte (ouverture/fermeture clavier).
+static void rappel_evenement_ta(lv_event_t * e) {
     lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * ta = lv_event_get_target(e);
+    lv_obj_t * zt = lv_event_get_target(e);
     if(code == LV_EVENT_CLICKED || code == LV_EVENT_FOCUSED) {
-        if(kb != NULL) {
-            lv_keyboard_set_textarea(kb, ta);
-            lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+        if(clavier_virtuel != NULL) {
+            lv_keyboard_set_textarea(clavier_virtuel, zt);
+            lv_obj_clear_flag(clavier_virtuel, LV_OBJ_FLAG_HIDDEN);
         }
     }
     if(code == LV_EVENT_DEFOCUSED) {
-        if(kb != NULL) {
-            lv_keyboard_set_textarea(kb, NULL);
-            lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+        if(clavier_virtuel != NULL) {
+            lv_keyboard_set_textarea(clavier_virtuel, NULL);
+            lv_obj_add_flag(clavier_virtuel, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
 
-static void kb_event_cb(lv_event_t * e) {
+// Gère les interactions et la saisie sur le clavier virtuel (changement de layout, validation).
+static void rappel_evenement_clavier(lv_event_t * e) {
     lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * kb_obj = lv_event_get_target(e);
+    lv_obj_t * obj_clavier = lv_event_get_target(e);
 
     if(code == LV_EVENT_VALUE_CHANGED) {
-        uint16_t btn_id = lv_btnmatrix_get_selected_btn(kb_obj);
-        if(btn_id == LV_BTNMATRIX_BTN_NONE) return;
+        uint16_t id_bouton = lv_btnmatrix_get_selected_btn(obj_clavier);
+        if(id_bouton == LV_BTNMATRIX_BTN_NONE) return;
 
-        const char * txt = lv_btnmatrix_get_btn_text(kb_obj, btn_id);
+        const char * txt = lv_btnmatrix_get_btn_text(obj_clavier, id_bouton);
         if(txt == NULL) return;
 
-        lv_obj_t * ta = lv_keyboard_get_textarea(kb_obj); // Get active Text Area
+        lv_obj_t * zt = lv_keyboard_get_textarea(obj_clavier); // Obtenir la zone de texte active
 
         if(strcmp(txt, LV_SYMBOL_UP) == 0) {
-            if(ta) lv_textarea_del_char(ta); // Remove the inserted symbol
-            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_TEXT_UPPER);
-            lv_indev_wait_release(lv_indev_get_act()); // Prevent ghost click
+            if(zt) lv_textarea_del_char(zt); // Supprimer le symbole inséré
+            lv_keyboard_set_mode(obj_clavier, LV_KEYBOARD_MODE_TEXT_UPPER);
+            lv_indev_wait_release(lv_indev_get_act()); // Empêcher le clic fantôme
         }
         else if(strcmp(txt, LV_SYMBOL_DOWN) == 0) {
-            if(ta) lv_textarea_del_char(ta); // Remove the inserted symbol
-            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_TEXT_LOWER);
-            lv_obj_set_height(kb_obj, lv_pct(60)); // Back to normal height
+            if(zt) lv_textarea_del_char(zt); // Supprimer le symbole inséré
+            lv_keyboard_set_mode(obj_clavier, LV_KEYBOARD_MODE_TEXT_LOWER);
+            lv_obj_set_height(obj_clavier, lv_pct(60)); // Retourner à la hauteur normale
            
         }
         else if(strcmp(txt, "1#") == 0) {
-            if(ta) {
-                lv_textarea_del_char(ta); // Remove #
-                lv_textarea_del_char(ta); // Remove 1
+            if(zt) {
+                lv_textarea_del_char(zt); // Supprimer #
+                lv_textarea_del_char(zt); // Supprimer 1
             }
-            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_SPECIAL);
-            lv_obj_set_height(kb_obj, lv_pct(70)); // Taller for special chars
-            lv_indev_wait_release(lv_indev_get_act()); // Prevent ghost click
+            lv_keyboard_set_mode(obj_clavier, LV_KEYBOARD_MODE_SPECIAL);
+            lv_obj_set_height(obj_clavier, lv_pct(70)); // Plus haut pour les caractères spéciaux
+            lv_indev_wait_release(lv_indev_get_act()); // Empêcher le clic fantôme
         }
         else if(strcmp(txt, "abc") == 0) {
-            if(ta) {
-                lv_textarea_del_char(ta); // c
-                lv_textarea_del_char(ta); // b
-                lv_textarea_del_char(ta); // a
+            if(zt) {
+                lv_textarea_del_char(zt); // c
+                lv_textarea_del_char(zt); // b
+                lv_textarea_del_char(zt); // a
             }
-            lv_keyboard_set_mode(kb_obj, LV_KEYBOARD_MODE_TEXT_LOWER);
-            lv_obj_set_height(kb_obj, lv_pct(60)); // Back to normal height
-            lv_indev_wait_release(lv_indev_get_act()); // Prevent ghost click
+            lv_keyboard_set_mode(obj_clavier, LV_KEYBOARD_MODE_TEXT_LOWER);
+            lv_obj_set_height(obj_clavier, lv_pct(60)); // Retourner à la hauteur normale
+            lv_indev_wait_release(lv_indev_get_act()); // Empêcher le clic fantôme
         }
     }
     else if(code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
-        lv_obj_add_flag(kb_obj, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(obj_clavier, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
-static void btn_connect_event_cb(lv_event_t * e) {
+// Gère le clic sur le bouton "Connexion" pour lancer la requête de connexion WiFi et l'animation d'état.
+static void rappel_evenement_bouton_connexion(lv_event_t * e) {
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         // Sauvegarde des credentials (simulation pour l'instant)
-        const char * txt_ssid = lv_textarea_get_text(ta_ssid);
-        const char * txt_pwd = lv_textarea_get_text(ta_pwd);
-        snprintf(wifi_ssid, sizeof(wifi_ssid), "%s", txt_ssid);
-        snprintf(wifi_pwd, sizeof(wifi_pwd), "%s", txt_pwd);
+        const char * texte_ssid = lv_textarea_get_text(zone_texte_reseau);
+        const char * texte_mdp = lv_textarea_get_text(zone_texte_mdp);
+        snprintf(wifi_reseau, sizeof(wifi_reseau), "%s", texte_ssid);
+        snprintf(wifi_mdp, sizeof(wifi_mdp), "%s", texte_mdp);
         
-        if (label_wifi_status) {
-            lv_label_set_text(label_wifi_status, "Connexion en cours...");
-            lv_obj_set_style_text_color(label_wifi_status, lv_color_make(255, 165, 0), 0); // Orange
-            wifi_connect_requested = true;
+        if (etiquette_statut_wifi) {
+            lv_label_set_text(etiquette_statut_wifi, "Connexion en cours...");
+            lv_obj_set_style_text_color(etiquette_statut_wifi, lv_color_make(255, 165, 0), 0); // Orange
+            connexion_wifi_demandee = true;
         }
-        printf("WiFi Connect Request: %s / %s\n", wifi_ssid, wifi_pwd);
+        printf("WiFi Connect Request: %s / %s\n", wifi_reseau, wifi_mdp);
     }
 }
 
-// Fonction Helper pour le statut
-void ui_linky_set_wifi_status(const char* msg, bool success) {
-    if(label_wifi_status) {
-        lv_label_set_text(label_wifi_status, msg);
-        if(success) lv_obj_set_style_text_color(label_wifi_status, lv_color_make(0, 255, 0), 0); // Vert
-        else lv_obj_set_style_text_color(label_wifi_status, lv_color_make(255, 0, 0), 0); // Rouge
+// Modifie le texte et la couleur du label de statut WiFi sur la page de configuration.
+void interface_linky_statut_wifi(const char* msg, bool success) {
+    if(etiquette_statut_wifi) {
+        lv_label_set_text(etiquette_statut_wifi, msg);
+        if(success) lv_obj_set_style_text_color(etiquette_statut_wifi, lv_color_make(0, 255, 0), 0); // Vert
+        else lv_obj_set_style_text_color(etiquette_statut_wifi, lv_color_make(255, 0, 0), 0); // Rouge
     }
 }
 
+// Crée l'écran de configuration réseau (Page 5) incluant la saisie du SSID et du mot de passe WiFi.
 void create_screen_wifi() {
-    screen_wifi = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen_wifi, lv_color_black(), 0);
+    ecran_wifi = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(ecran_wifi, lv_color_black(), 0);
     
-    // Title
-    lv_obj_t * title = lv_label_create(screen_wifi);
-    lv_label_set_text(title, "CONFIGURATION WIFI");
-    lv_obj_set_style_text_color(title, lv_color_white(), 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
+    // Titre
+    lv_obj_t * titre = lv_label_create(ecran_wifi);
+    lv_label_set_text(titre, "CONFIGURATION WIFI");
+    lv_obj_set_style_text_color(titre, lv_color_white(), 0);
+    lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 20);
 
-    // SSID Area
-    ta_ssid = lv_textarea_create(screen_wifi);
-    lv_obj_set_style_text_font(ta_ssid, &lv_font_montserrat_20, 0); // Police agrandie
-    lv_textarea_set_placeholder_text(ta_ssid, "Nom du reseau");
-    lv_obj_set_width(ta_ssid, 220);
-    lv_obj_align(ta_ssid, LV_ALIGN_TOP_MID, 0, 60);
-    lv_obj_add_event_cb(ta_ssid, ta_event_cb, LV_EVENT_ALL, NULL);
+    // Zone SSID
+    zone_texte_reseau = lv_textarea_create(ecran_wifi);
+    lv_obj_set_style_text_font(zone_texte_reseau, &lv_font_montserrat_20, 0); // Police agrandie
+    lv_textarea_set_placeholder_text(zone_texte_reseau, "Nom du reseau");
+    lv_obj_set_width(zone_texte_reseau, 220);
+    lv_obj_align(zone_texte_reseau, LV_ALIGN_TOP_MID, 0, 60);
+    lv_obj_add_event_cb(zone_texte_reseau, rappel_evenement_ta, LV_EVENT_ALL, NULL);
 
-    // Password Area
-    ta_pwd = lv_textarea_create(screen_wifi);
-    lv_obj_set_style_text_font(ta_pwd, &lv_font_montserrat_20, 0); // Police agrandie
-    lv_textarea_set_placeholder_text(ta_pwd, "Mot de passe");
-    lv_textarea_set_password_mode(ta_pwd, false);
-    lv_obj_set_width(ta_pwd, 220);
-    lv_obj_align(ta_pwd, LV_ALIGN_TOP_MID, 0, 110);
-    lv_obj_add_event_cb(ta_pwd, ta_event_cb, LV_EVENT_ALL, NULL);
+    // Zone de mot de passe
+    zone_texte_mdp = lv_textarea_create(ecran_wifi);
+    lv_obj_set_style_text_font(zone_texte_mdp, &lv_font_montserrat_20, 0); // Police agrandie
+    lv_textarea_set_placeholder_text(zone_texte_mdp, "Mot de passe");
+    lv_textarea_set_password_mode(zone_texte_mdp, false);
+    lv_obj_set_width(zone_texte_mdp, 220);
+    lv_obj_align(zone_texte_mdp, LV_ALIGN_TOP_MID, 0, 110);
+    lv_obj_add_event_cb(zone_texte_mdp, rappel_evenement_ta, LV_EVENT_ALL, NULL);
 
-    // Connect Button
-    btn_connect = lv_btn_create(screen_wifi);
-    lv_obj_set_width(btn_connect, 120);
-    lv_obj_align(btn_connect, LV_ALIGN_TOP_MID, 0, 160);
-    lv_obj_add_event_cb(btn_connect, btn_connect_event_cb, LV_EVENT_ALL, NULL);
-    lv_obj_set_style_bg_color(btn_connect, lv_color_make(0, 100, 255), 0);
+    // Bouton de connexion
+    bouton_connexion = lv_btn_create(ecran_wifi);
+    lv_obj_set_width(bouton_connexion, 120);
+    lv_obj_align(bouton_connexion, LV_ALIGN_TOP_MID, 0, 160);
+    lv_obj_add_event_cb(bouton_connexion, rappel_evenement_bouton_connexion, LV_EVENT_ALL, NULL);
+    lv_obj_set_style_bg_color(bouton_connexion, lv_color_make(0, 100, 255), 0);
 
-    lv_obj_t * btn_label = lv_label_create(btn_connect);
-    lv_label_set_text(btn_label, "Connexion");
-    lv_obj_center(btn_label);
+    lv_obj_t * etiquette_bouton = lv_label_create(bouton_connexion);
+    lv_label_set_text(etiquette_bouton, "Connexion");
+    lv_obj_center(etiquette_bouton);
 
-    // Status Label
-    label_wifi_status = lv_label_create(screen_wifi);
-    lv_label_set_text(label_wifi_status, "Pret");
-    lv_obj_set_style_text_color(label_wifi_status, lv_color_make(0, 255, 0), 0);
-    lv_obj_align(label_wifi_status, LV_ALIGN_TOP_MID, 0, 200);
+    // Étiquette de statut
+    etiquette_statut_wifi = lv_label_create(ecran_wifi);
+    lv_label_set_text(etiquette_statut_wifi, "Pret");
+    lv_obj_set_style_text_color(etiquette_statut_wifi, lv_color_make(0, 255, 0), 0);
+    lv_obj_align(etiquette_statut_wifi, LV_ALIGN_TOP_MID, 0, 200);
 
-    // Keyboard (Initially Hidden)
-    kb = lv_keyboard_create(screen_wifi);
-    lv_obj_set_width(kb, lv_pct(100)); 
-    lv_obj_set_height(kb, lv_pct(70));
-    lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, -20); // Remonte de 20px pour eviter la zone difficile
+    // Clavier (initialement masqué)
+    clavier_virtuel = lv_keyboard_create(ecran_wifi);
+    lv_obj_set_width(clavier_virtuel, lv_pct(100)); 
+    lv_obj_set_height(clavier_virtuel, lv_pct(70));
+    lv_obj_align(clavier_virtuel, LV_ALIGN_BOTTOM_MID, 0, -20); // Remonte de 20px pour eviter la zone difficile
     
-    // Set AZERTY Map
-    lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_TEXT_LOWER, kb_map_azerty_lc, kb_ctrl_azerty_lc_map);
-    lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_TEXT_UPPER, kb_map_azerty_uc, kb_ctrl_azerty_uc_map);
-    lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_SPECIAL, kb_map_spec, kb_ctrl_spec_map);
-    lv_keyboard_set_mode(kb, LV_KEYBOARD_MODE_TEXT_LOWER);
+    // Définir la configuration AZERTY
+    lv_keyboard_set_map(clavier_virtuel, LV_KEYBOARD_MODE_TEXT_LOWER, kb_map_azerty_lc, kb_ctrl_azerty_lc_map);
+    lv_keyboard_set_map(clavier_virtuel, LV_KEYBOARD_MODE_TEXT_UPPER, kb_map_azerty_uc, kb_ctrl_azerty_uc_map);
+    lv_keyboard_set_map(clavier_virtuel, LV_KEYBOARD_MODE_SPECIAL, kb_map_spec, kb_ctrl_spec_map);
+    lv_keyboard_set_mode(clavier_virtuel, LV_KEYBOARD_MODE_TEXT_LOWER);
 
-    // Apply Styles
-    lv_obj_add_style(kb, &style_kb, LV_PART_ITEMS);
-    lv_obj_add_style(kb, &style_kb_main, LV_PART_MAIN);
+    // Appliquer les styles
+    lv_obj_add_style(clavier_virtuel, &style_clavier, LV_PART_ITEMS);
+    lv_obj_add_style(clavier_virtuel, &style_clavier_principal, LV_PART_MAIN);
 
-    lv_obj_add_event_cb(kb, kb_event_cb, LV_EVENT_ALL, NULL);
-    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(clavier_virtuel, rappel_evenement_clavier, LV_EVENT_ALL, NULL);
+    lv_obj_add_flag(clavier_virtuel, LV_OBJ_FLAG_HIDDEN);
 }
 
-// --- MAIN INIT ---
-void ui_linky_init() {
+// Initialise toutes les pages de l'interface graphique Linky et charge l'écran principal.
+void interface_linky_initialisation() {
   style_init();
 
   create_screen_meter();
@@ -739,149 +743,149 @@ void ui_linky_init() {
   create_screen_week();
   create_screen_history();
   create_screen_info();
-  create_screen_wifi(); // Init de la page WiFi
+  create_screen_wifi(); // Initialisation de la page WiFi
 
-  lv_scr_load(screen_meter); // Load Meter first
-  current_page_index = 0;
+  lv_scr_load(ecran_jauge); // Charger le compteur en premier
+  index_page_actuelle = 0;
 }
 
-// --- PAGE NAVIGATION ---
-void ui_linky_change_page(int direction) {
+// Change la page affichée à l'écran (direction = +1 ou -1) selon la navigation de l'encodeur.
+void interface_linky_changer_page(int direction) {
   printf("UI PAGE CHANGE CMD: %d\n", direction);
-  current_page_index += direction;
+  index_page_actuelle += direction;
 
-  if (current_page_index > 5) current_page_index = 0;
-  if (current_page_index < 0) current_page_index = 5;
+  if (index_page_actuelle > 5) index_page_actuelle = 0;
+  if (index_page_actuelle < 0) index_page_actuelle = 5;
 
-  switch (current_page_index) {
-    case 0: lv_scr_load_anim(screen_meter, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 1: lv_scr_load_anim(screen_index, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 2: lv_scr_load_anim(screen_week, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 3: lv_scr_load_anim(screen_history, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 4: lv_scr_load_anim(screen_info, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 5: lv_scr_load_anim(screen_wifi, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+  switch (index_page_actuelle) {
+    case 0: lv_scr_load_anim(ecran_jauge, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 1: lv_scr_load_anim(ecran_index, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 2: lv_scr_load_anim(ecran_semaine, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 3: lv_scr_load_anim(ecran_historique, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 4: lv_scr_load_anim(ecran_info, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 5: lv_scr_load_anim(ecran_wifi, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
   }
-} // End change_page (added wifi case)
+} // Fin de change_page (cas wifi ajouté)
 
-// --- UPDATE LOOP ---
-void ui_linky_update(linky_data_t * data) {
-  // Time Update
-  time_t now;
-  time(&now);
-  struct tm *t = localtime(&now);
+// Met à jour les éléments graphiques et historiques de l'UI avec les dernières données Linky.
+void interface_linky_actualiser(donnees_linky_t * data) {
+  // Mise à jour de l'heure
+  time_t maintenant;
+  time(&maintenant);
+  struct tm *temps = localtime(&maintenant);
 
-  char buf_time[16];
-  char buf_date[16];
+  char tampon_heure[16];
+  char tampon_date[16];
   
-  if (t->tm_year >= 120) { // Time valid (>= 2020)
-      snprintf(buf_time, sizeof(buf_time), "%02d:%02d", t->tm_hour, t->tm_min);
-      snprintf(buf_date, sizeof(buf_date), "%02d/%02d/%04d", t->tm_mday, t->tm_mon+1, t->tm_year+1900);
+  if (temps->tm_year >= 120) { // Heure valide (>= 2020)
+      snprintf(tampon_heure, sizeof(tampon_heure), "%02d:%02d", temps->tm_hour, temps->tm_min);
+      snprintf(tampon_date, sizeof(tampon_date), "%02d/%02d/%04d", temps->tm_mday, temps->tm_mon+1, temps->tm_year+1900);
       
-      // Update dynamic highlights
-      if (highlight_week) {
-          int wday = (t->tm_wday == 0) ? 6 : (t->tm_wday - 1);
-          float angle_deg = -90.0f + (wday * 360.0f / 7.0f);
+      // Mettre à jour les surbrillances dynamiques
+      if (surbrillance_semaine) {
+          int jour_v = (temps->tm_wday == 0) ? 6 : (temps->tm_wday - 1);
+          float angle_deg = -90.0f + (jour_v * 360.0f / 7.0f);
           float angle_rad = angle_deg * (PI / 180.0f);
-          int lx = 165 + (int)(cos(angle_rad) * 160);
-          int ly = 165 + (int)(sin(angle_rad) * 160);
-          lv_obj_set_pos(highlight_week, lx - 12, ly - 13);
-          lv_obj_clear_flag(highlight_week, LV_OBJ_FLAG_HIDDEN);
+          int coord_x = 165 + (int)(cos(angle_rad) * 160);
+          int coord_y = 165 + (int)(sin(angle_rad) * 160);
+          lv_obj_set_pos(surbrillance_semaine, coord_x - 12, coord_y - 13);
+          lv_obj_clear_flag(surbrillance_semaine, LV_OBJ_FLAG_HIDDEN);
       }
       
-      if (highlight_month) {
-          int mon = t->tm_mon;
-          float angle_deg = (mon + 1) * 30; 
+      if (surbrillance_mois) {
+          int mois_v = temps->tm_mon;
+          float angle_deg = (mois_v + 1) * 30; 
           float angle_rad = angle_deg * (PI / 180.0f);
-          int lx = 165 + (int)(sin(angle_rad) * 160);
-          int ly = 165 - (int)(cos(angle_rad) * 160);
-          lv_obj_set_pos(highlight_month, lx - 12, ly - 13);
-          lv_obj_clear_flag(highlight_month, LV_OBJ_FLAG_HIDDEN);
+          int coord_x = 165 + (int)(sin(angle_rad) * 160);
+          int coord_y = 165 - (int)(cos(angle_rad) * 160);
+          lv_obj_set_pos(surbrillance_mois, coord_x - 12, coord_y - 13);
+          lv_obj_clear_flag(surbrillance_mois, LV_OBJ_FLAG_HIDDEN);
       }
       
   } else {
-      snprintf(buf_time, sizeof(buf_time), "--:--");
-      snprintf(buf_date, sizeof(buf_date), "--/--/----");
+      snprintf(tampon_heure, sizeof(tampon_heure), "--:--");
+      snprintf(tampon_date, sizeof(tampon_date), "--/--/----");
   }
   
-  if (label_time) {
-      lv_obj_set_style_text_color(label_time, lv_color_white(), 0); 
-      lv_label_set_text(label_time, buf_time);
+  if (etiquette_heure) {
+      lv_obj_set_style_text_color(etiquette_heure, lv_color_white(), 0); 
+      lv_label_set_text(etiquette_heure, tampon_heure);
   }
 
-  if (label_date) {
-      lv_obj_set_style_text_color(label_date, lv_color_white(), 0);
-      const char* week_days[] = {"DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"};
-      const char* months[] = {"JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"};
-      lv_label_set_text_fmt(label_date, "%s %d %s\n%d", week_days[t->tm_wday], t->tm_mday, months[t->tm_mon], 1900 + t->tm_year);
+  if (etiquette_date) {
+      lv_obj_set_style_text_color(etiquette_date, lv_color_white(), 0);
+      const char* jours_semaine[] = {"DIMANCHE", "LUNDI", "MARDI", "MERCREDI", "JEUDI", "VENDREDI", "SAMEDI"};
+      const char* mois_annee[] = {"JANVIER", "FEVRIER", "MARS", "AVRIL", "MAI", "JUIN", "JUILLET", "AOUT", "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DECEMBRE"};
+      lv_label_set_text_fmt(etiquette_date, "%s %d %s\n%d", jours_semaine[temps->tm_wday], temps->tm_mday, mois_annee[temps->tm_mon], 1900 + temps->tm_year);
   }
 
-  // Value Update
-  if (label_papp_val) {
+  // Mise à jour de la valeur
+  if (etiquette_papp_valeur) {
       float kw = data->papp / 1000.0f;
       int i_kw = (int)kw;
       int d_kw = (int)((kw - i_kw) * 10);
-      lv_label_set_text_fmt(label_papp_val, "%d.%d", i_kw, d_kw);
-      lv_obj_align_to(label_papp_unit, label_papp_val, LV_ALIGN_OUT_RIGHT_BOTTOM, 5, -3);
+      lv_label_set_text_fmt(etiquette_papp_valeur, "%d.%d", i_kw, d_kw);
+      lv_obj_align_to(etiquette_papp_unite, etiquette_papp_valeur, LV_ALIGN_OUT_RIGHT_BOTTOM, 5, -3);
   }
 
   // Index
-  if (label_index_base) lv_label_set_text_fmt(label_index_base, "BASE: %lu", (unsigned long)data->index_base);
-  if (label_index_hp) lv_label_set_text_fmt(label_index_hp, "HP: %lu", (unsigned long)data->index_hp);
-  if (label_index_hc) lv_label_set_text_fmt(label_index_hc, "HC: %lu", (unsigned long)data->index_hc);
+  if (etiquette_index_base) lv_label_set_text_fmt(etiquette_index_base, "BASE: %lu", (unsigned long)data->index_base);
+  if (etiquette_index_hp) lv_label_set_text_fmt(etiquette_index_hp, "HP: %lu", (unsigned long)data->index_hp);
+  if (etiquette_index_hc) lv_label_set_text_fmt(etiquette_index_hc, "HC: %lu", (unsigned long)data->index_hc);
 
-  // Info Stats
-  if (data->voltage > 0) { 
-      if (data->voltage < v_min) v_min = data->voltage;
-      if (data->voltage > v_max) v_max = data->voltage;
-      v_sum += data->voltage;
-      v_count++;
+  // Statistiques d'informations
+  if (data->tension > 0) { 
+      if (data->tension < tension_min) tension_min = data->tension;
+      if (data->tension > tension_max) tension_max = data->tension;
+      tension_somme += data->tension;
+      tension_compteur++;
   }
-  int v_avg = (v_count > 0) ? (v_sum / v_count) : 0;
-  if (label_volt) lv_label_set_text_fmt(label_volt, "%d V", data->voltage);
-  if (label_volt_stats) lv_label_set_text_fmt(label_volt_stats, "Min:%d      Avg:%d      Max:%d", (v_min==999)?0:v_min, v_avg, v_max);
+  int v_avg = (tension_compteur > 0) ? (tension_somme / tension_compteur) : 0;
+  if (etiquette_tension) lv_label_set_text_fmt(etiquette_tension, "%d V", data->tension);
+  if (etiquette_stats_tension) lv_label_set_text_fmt(etiquette_stats_tension, "Min:%d      Avg:%d      Max:%d", (tension_min==999)?0:tension_min, v_avg, tension_max);
 
-  if (data->iinst < a_min) a_min = data->iinst;
-  if (data->iinst > a_max) a_max = data->iinst;
-  a_sum += data->iinst;
-  a_count++;
-  int a_avg = (a_count > 0) ? (a_sum / a_count) : 0;
-  if (label_amp) lv_label_set_text_fmt(label_amp, "%d A", data->iinst);
-  if (label_amp_stats) lv_label_set_text_fmt(label_amp_stats, "Min:%d      Avg:%d      Max:%d", (a_min==999)?0:a_min, a_avg, a_max);
+  if (data->iinst < intensite_min) intensite_min = data->iinst;
+  if (data->iinst > intensite_max) intensite_max = data->iinst;
+  intensite_somme += data->iinst;
+  intensite_compteur++;
+  int a_avg = (intensite_compteur > 0) ? (intensite_somme / intensite_compteur) : 0;
+  if (etiquette_intensite) lv_label_set_text_fmt(etiquette_intensite, "%d A", data->iinst);
+  if (etiquette_stats_intensite) lv_label_set_text_fmt(etiquette_stats_intensite, "Min:%d      Avg:%d      Max:%d", (intensite_min==999)?0:intensite_min, a_avg, intensite_max);
 
     // Refresh WEEK page if needed (redessiner les lignes si de nouvelles données sont recoltées par la SD)
     // Seules quelques redessins sont necessaires (la boucle est lourde donc optionnelle 
     // ou on la met a jour seulement a minuit, mais bon on update ici)
-    // Actually, to avoid overloading the CPU, since SD data only updates at midnight,
-    // we don't necessarily need to update the 7*12 lines 10 times a second here.
-    // The initial create screens have already grabbed the global SD data !
+    // En fait, pour éviter de surcharger le processeur, puisque les données SD ne se mettent à jour qu'à minuit,
+    // il n'est pas nécessaire de mettre à jour les 7*12 lignes 10 fois par seconde ici.
+    // Les écrans de création initiaux ont déjà récupéré les données SD globales !
 
 
 
-  // Bars Update Logic (Simulated)
-  static uint32_t last_chart_upd = 0;
-  static bool first_chart = true; 
+  // Logique de mise à jour des barres (Simulée)
+  static uint32_t derniere_maj_graph = 0;
+  static bool premier_graph = true; 
   
-  if (meter_bars[0]) {
-       if (first_chart || (lv_tick_get() - last_chart_upd > 10 * 60 * 1000)) {
-           // Shift & Add
-           for(int i=0; i<5; i++) meter_values[i] = meter_values[i+1];
-           meter_values[5] = data->papp; 
-           last_chart_upd = lv_tick_get();
-           first_chart = false;
+  if (barres_jauge[0]) {
+       if (premier_graph || (lv_tick_get() - derniere_maj_graph > 10 * 60 * 1000)) {
+           // Décaler & Ajouter
+           for(int i=0; i<5; i++) valeurs_jauge[i] = valeurs_jauge[i+1];
+           valeurs_jauge[5] = data->papp; 
+           derniere_maj_graph = lv_tick_get();
+           premier_graph = false;
            
            for(int i=0; i<6; i++) {
-               int val = meter_values[i];
+               int val = valeurs_jauge[i];
                if(val > 9000) val = 9000;
                int h = (val * 100) / 9000;
                if(h < 5) h = 5;
 
-               lv_obj_set_height(meter_bars[i], h);
+               lv_obj_set_height(barres_jauge[i], h);
                
-               float kw_bar = val / 1000.0f;
-               if (meter_labels_val[i]) {
-                   int i_b = (int)kw_bar; int d_b = (int)((kw_bar - i_b)*10);
-                   lv_label_set_text_fmt(meter_labels_val[i], "%d.%d", i_b, d_b);
-                   lv_obj_align_to(meter_labels_val[i], meter_bars[i], LV_ALIGN_OUT_TOP_MID, 0, -5);
+               float barre_kw = val / 1000.0f;
+               if (etiquettes_jauge_valeur[i]) {
+                   int i_b_v = (int)barre_kw; int d_b_v = (int)((barre_kw - i_b_v)*10);
+                   lv_label_set_text_fmt(etiquettes_jauge_valeur[i], "%d.%d", i_b_v, d_b_v);
+                   lv_obj_align_to(etiquettes_jauge_valeur[i], barres_jauge[i], LV_ALIGN_OUT_TOP_MID, 0, -5);
                }
            }
        }

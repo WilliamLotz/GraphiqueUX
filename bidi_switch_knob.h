@@ -17,158 +17,60 @@ extern "C"
 {
 #endif
 
-    typedef void (*knob_cb_t)(void *, void *);
-    typedef void *knob_handle_t;
+    typedef void (*rappel_encodeur_t)(void *, void *);
+    typedef void *handle_encodeur_t;
 
-    /**
-     * @brief Knob events
-     *
-     */
+    // Événements du bouton
     typedef enum
     {
-        KNOB_LEFT = 0,  /*!< EVENT: Rotate to the left */
-        KNOB_RIGHT,     /*!< EVENT: Rotate to the right */
-        KNOB_EVENT_MAX, /*!< EVENT: Number of events */
-        KNOB_NONE,      /*!< EVENT: No event */
-    } knob_event_t;
+        BOUTON_GAUCHE = 0,  // ÉVÉNEMENT : Rotation vers la gauche
+        BOUTON_DROITE,     // ÉVÉNEMENT : Rotation vers la droite
+        BOUTON_EVENEMENT_MAX, // ÉVÉNEMENT : Nombre d'événements
+        BOUTON_AUCUN,      // ÉVÉNEMENT : Aucun événement
+    } evenement_bouton_t;
 
-    /**
-     * @brief Knob config
-     *
-     */
+    // Configuration du bouton
     typedef struct
     {
-        uint8_t gpio_encoder_a; /*!< Encoder Pin A */
-        uint8_t gpio_encoder_b; /*!< Encoder Pin B */
-    } knob_config_t;
+        uint8_t gpio_encodeur_a; // Broche de l'encodeur A
+        uint8_t gpio_encodeur_b; // Broche de l'encodeur B
+    } config_bouton_t;
 
-    /**
-     * @brief create a knob
-     *
-     * @param config pointer of knob configuration
-     *
-     * @return A handle to the created knob
-     */
-    knob_handle_t iot_knob_create(const knob_config_t *config);
+    // Crée un encodeur rotatif selon la configuration donnée et retourne son handle.
+    handle_encodeur_t creer_encodeur(const config_bouton_t *config);
 
-    /**
-     * @brief Delete a knob
-     *
-     * @param knob_handle A knob handle to delete
-     *
-     * @return
-     *         - ESP_OK  Success
-     *         - ESP_FAIL Failure
-     */
-    esp_err_t iot_knob_delete(knob_handle_t knob_handle);
+    // Supprime un encodeur rotatif et libère ses ressources.
+    esp_err_t supprimer_encodeur(handle_encodeur_t handle_encodeur);
 
-    /**
-     * @brief Register the knob event callback function
-     *
-     * @param knob_handle A knob handle to register
-     * @param event Knob event
-     * @param cb Callback function
-     * @param usr_data user data
-     *
-     * @return
-     *         - ESP_OK  Success
-     *         - ESP_FAIL Failure
-     */
-    esp_err_t iot_knob_register_cb(knob_handle_t knob_handle, knob_event_t event, knob_cb_t cb, void *usr_data);
+    // Enregistre une fonction de rappel pour un événement spécifique de l'encodeur.
+    esp_err_t enregistrer_rappel_encodeur(handle_encodeur_t handle_encodeur, evenement_bouton_t event, rappel_encodeur_t cb, void *usr_data);
 
-    /**
-     * @brief Unregister the knob event callback function
-     *
-     * @param knob_handle A knob handle to register
-     * @param event Knob event
-     *
-     * @return
-     *         - ESP_OK  Success
-     *         - ESP_FAIL Failure
-     */
-    esp_err_t iot_knob_unregister_cb(knob_handle_t knob_handle, knob_event_t event);
+    // Désenregistre la fonction de rappel d'un événement spécifique.
+    esp_err_t desenregistrer_rappel_encodeur(handle_encodeur_t handle_encodeur, evenement_bouton_t event);
 
-    /**
-     * @brief Get knob event
-     *
-     * @param knob_handle A knob handle to register
-     * @return knob_event_t Knob event
-     */
-    knob_event_t iot_knob_get_event(knob_handle_t knob_handle);
+    // Récupère le dernier événement généré par l'encodeur.
+    evenement_bouton_t obtenir_evenement_encodeur(handle_encodeur_t handle_encodeur);
 
-    /**
-     * @brief Get knob count value
-     *
-     * @param knob_handle A knob handle to register
-     *
-     * @return int count_value
-     */
-    int iot_knob_get_count_value(knob_handle_t knob_handle);
+    // Récupère la valeur actuelle du compteur de l'encodeur.
+    int obtenir_valeur_compteur_encodeur(handle_encodeur_t handle_encodeur);
 
-    /**
-     * @brief Clear knob cout value to zero
-     *
-     * @param knob_handle A knob handle to register
-     *
-     * @return
-     *         - ESP_OK  Success
-     *         - ESP_FAIL Failure
-     */
-    esp_err_t iot_knob_clear_count_value(knob_handle_t knob_handle);
+    // Réinitialise le compteur de l'encodeur à zéro.
+    esp_err_t effacer_valeur_compteur_encodeur(handle_encodeur_t handle_encodeur);
 
-    /**
-     * @brief resume knob timer, if knob timer is stopped. Make sure iot_knob_create() is called before calling this API.
-     *
-     * @return
-     *     - ESP_OK on success
-     *     - ESP_ERR_INVALID_STATE   timer state is invalid.
-     */
-    esp_err_t iot_knob_resume(void);
+    // Relance le timer de scrutation des encodeurs (nécessite iot_knob_create au préalable).
+    esp_err_t reprendre_encodeur(void);
 
-    /**
-     * @brief stop knob timer, if knob timer is running. Make sure iot_knob_create() is called before calling this API.
-     *
-     * @return
-     *     - ESP_OK on success
-     *     - ESP_ERR_INVALID_STATE   timer state is invalid
-     */
-    esp_err_t iot_knob_stop(void);
+    // Arrête le timer de scrutation des encodeurs.
+    esp_err_t arreter_encodeur(void);
 
-    /**
-     * @brief Initialize a GPIO pin for knob input.
-     *
-     * This function configures a specified GPIO pin as an input for knob control.
-     * It sets the pin mode, disables interrupts, and enables the pull-up resistor.
-     *
-     * @param gpio_num The GPIO number to be configured.
-     * @return
-     *      - ESP_OK: Configuration successful.
-     *      - ESP_ERR_INVALID_ARG: Parameter error.
-     *      - ESP_FAIL: Configuration failed.
-     */
-    esp_err_t knob_gpio_init(uint32_t gpio_num);
+    // Configure une broche GPIO en entrée avec résistance de tirage (pull-up) pour l'encodeur.
+    esp_err_t init_gpio_encodeur(uint32_t gpio_num);
 
-    /**
-     * @brief Deinitialize a GPIO pin for knob input.
-     *
-     * This function resets the specified GPIO pin.
-     *
-     * @param gpio_num The GPIO number to be deinitialized.
-     * @return
-     *      - ESP_OK: Reset successful.
-     *      - ESP_FAIL: Reset failed.
-     */
-    esp_err_t knob_gpio_deinit(uint32_t gpio_num);
+    // Réinitialise une broche GPIO utilisée par l'encodeur.
+    esp_err_t deinit_gpio_encodeur(uint32_t gpio_num);
 
-    /**
-     * @brief Get the level of a GPIO pin.
-     *
-     * This function returns the current level (high or low) of the specified GPIO pin.
-     *
-     * @param gpio_num The GPIO number to read the level from.
-     * @return The level of the GPIO pin (0 or 1).
-     */
-    uint8_t knob_gpio_get_key_level(void *gpio_num);
+    // Lit et retourne l'état logique matériel d'une broche GPIO.
+    uint8_t obtenir_niveau_gpio_encodeur(void *gpio_num);
 
 #ifdef __cplusplus
 }

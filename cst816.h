@@ -6,9 +6,11 @@
 extern "C" {
 #endif 
 
-void Touch_Init(void);
+// Initialise le contrôleur tactile I2C CST816.
+void initialisation_tactile(void);
 
-uint8_t getTouch(uint16_t *x,uint16_t *y);
+// Récupère les coordonnées (x,y) du dernier point de contact s'il existe (retourne 1 si détecté).
+uint8_t obtenir_tactile(uint16_t *x,uint16_t *y);
 
 #ifdef __cplusplus
 }
