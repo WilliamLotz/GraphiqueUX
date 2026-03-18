@@ -269,6 +269,32 @@ void create_screen_meter() {
   }
 }
 
+// Crée un conteneur style "carte" pour l'écran des index
+static lv_obj_t* creer_carte_index(lv_obj_t * parent, const char* titre_carte, lv_color_t couleur, lv_obj_t** label_valeur) {
+    lv_obj_t * carte = lv_obj_create(parent);
+    lv_obj_set_size(carte, 320, 75);
+    lv_obj_set_style_radius(carte, 15, 0);
+    lv_obj_set_style_bg_color(carte, lv_color_make(20, 20, 20), 0); // Gris très foncé
+    lv_obj_set_style_bg_opa(carte, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(carte, 2, 0);
+    lv_obj_set_style_border_color(carte, couleur, 0); 
+    lv_obj_clear_flag(carte, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t * titre_lbl = lv_label_create(carte);
+    lv_label_set_text(titre_lbl, titre_carte);
+    lv_obj_set_style_text_color(titre_lbl, couleur, 0);
+    lv_obj_align(titre_lbl, LV_ALIGN_LEFT_MID, 5, 0);
+    lv_obj_set_style_text_font(titre_lbl, &lv_font_montserrat_20, 0);
+
+    *label_valeur = lv_label_create(carte);
+    lv_label_set_text(*label_valeur, "-----");
+    lv_obj_set_style_text_color(*label_valeur, lv_color_white(), 0);
+    lv_obj_align(*label_valeur, LV_ALIGN_RIGHT_MID, -5, 0);
+    lv_obj_set_style_text_font(*label_valeur, &lv_font_montserrat_30, 0); 
+
+    return carte;
+}
+
 // Crée l'écran des compteurs (Page 1) affichant les index Base, Heures Pleines et Heures Creuses.
 void create_screen_index() {
   ecran_index = lv_obj_create(NULL);
@@ -278,29 +304,19 @@ void create_screen_index() {
   lv_obj_t *titre = lv_label_create(ecran_index);
   lv_label_set_text(titre, "INDEX kWh");
   lv_obj_set_style_text_color(titre, lv_color_white(), 0);
-  lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 30);
+  lv_obj_align(titre, LV_ALIGN_TOP_MID, 0, 15);
+  lv_obj_set_style_text_font(titre, &lv_font_montserrat_30, 0);
   lv_obj_set_style_text_letter_space(titre, 2, 0); 
 
-  // Base
-  etiquette_index_base = lv_label_create(ecran_index);
-  lv_label_set_text(etiquette_index_base, "BASE: -----");
-  lv_obj_set_style_text_color(etiquette_index_base, lv_color_white(), 0);
-  lv_obj_align(etiquette_index_base, LV_ALIGN_CENTER, 0, -40); 
-  lv_obj_set_style_text_letter_space(etiquette_index_base, 1, 0);
+  // Création des cartes pour chaque indicateur
+  lv_obj_t * carte_base = creer_carte_index(ecran_index, "BASE", lv_color_make(0, 150, 255), &etiquette_index_base); // Bleu
+  lv_obj_align(carte_base, LV_ALIGN_TOP_MID, 0, 80);
 
-  // Heures Pleines
-  etiquette_index_hp = lv_label_create(ecran_index);
-  lv_label_set_text(etiquette_index_hp, "HP: -----");
-  lv_obj_set_style_text_color(etiquette_index_hp, lv_color_white(), 0);
-  lv_obj_align(etiquette_index_hp, LV_ALIGN_CENTER, 0, 0); 
-  lv_obj_set_style_text_letter_space(etiquette_index_hp, 1, 0);
+  lv_obj_t * carte_hp = creer_carte_index(ecran_index, "H. PLEINES", lv_color_make(255, 50, 50), &etiquette_index_hp);  // Rouge
+  lv_obj_align(carte_hp, LV_ALIGN_TOP_MID, 0, 170);
 
-  // Heures Creuses
-  etiquette_index_hc = lv_label_create(ecran_index);
-  lv_label_set_text(etiquette_index_hc, "HC: -----");
-  lv_obj_set_style_text_color(etiquette_index_hc, lv_color_white(), 0);
-  lv_obj_align(etiquette_index_hc, LV_ALIGN_CENTER, 0, 40); 
-  lv_obj_set_style_text_letter_space(etiquette_index_hc, 1, 0);
+  lv_obj_t * carte_hc = creer_carte_index(ecran_index, "H. CREUSES", lv_color_make(50, 255, 50), &etiquette_index_hc);   // Vert
+  lv_obj_align(carte_hc, LV_ALIGN_TOP_MID, 0, 260);
 }
 
 // Crée l'écran d'informations (Page 4) affichant les statistiques de tension et d'intensité.
@@ -859,9 +875,9 @@ void interface_linky_actualiser(donnees_linky_t * data) {
   }
 
   // Index
-  if (etiquette_index_base) lv_label_set_text_fmt(etiquette_index_base, "BASE: %lu", (unsigned long)data->index_base);
-  if (etiquette_index_hp) lv_label_set_text_fmt(etiquette_index_hp, "HP: %lu", (unsigned long)data->index_hp);
-  if (etiquette_index_hc) lv_label_set_text_fmt(etiquette_index_hc, "HC: %lu", (unsigned long)data->index_hc);
+  if (etiquette_index_base) lv_label_set_text_fmt(etiquette_index_base, "%lu", (unsigned long)data->index_base);
+  if (etiquette_index_hp) lv_label_set_text_fmt(etiquette_index_hp, "%lu", (unsigned long)data->index_hp);
+  if (etiquette_index_hc) lv_label_set_text_fmt(etiquette_index_hc, "%lu", (unsigned long)data->index_hc);
 
   // Statistiques d'informations
   if (data->tension > 0) { 
