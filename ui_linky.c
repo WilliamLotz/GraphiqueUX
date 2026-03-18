@@ -171,25 +171,18 @@ static void rappel_fin_accueil(lv_timer_t * timer) {
     lv_scr_load_anim(ecran_jauge, LV_SCR_LOAD_ANIM_FADE_ON, 800, 0, true);
 }
 
+extern const lv_img_dsc_t img_boot_bg;
+
 void create_screen_accueil() {
     ecran_accueil = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(ecran_accueil, lv_color_black(), 0);
     lv_obj_clear_flag(ecran_accueil, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(ecran_accueil, 0, 0);
     
-    // Titre de bienvenue simple
-    lv_obj_t * label = lv_label_create(ecran_accueil);
-    lv_label_set_text(label, "Bienvenue sur le\nKnobTouch !");
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(label);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    
-    // Sous-titre
-    lv_obj_t * sous_titre = lv_label_create(ecran_accueil);
-    lv_label_set_text(sous_titre, "Demarrage en cours...");
-    lv_obj_set_style_text_color(sous_titre, lv_color_make(150, 150, 150), 0);
-    lv_obj_align(sous_titre, LV_ALIGN_BOTTOM_MID, 0, -40);
-    lv_obj_set_style_text_font(sous_titre, &lv_font_montserrat_16, 0);
+    // Affiche l'image de démarrage en plein écran
+    lv_obj_t * img = lv_img_create(ecran_accueil);
+    lv_img_set_src(img, &img_boot_bg);
+    lv_obj_center(img);
 
     // Timer de 5 secondes
     timer_accueil = lv_timer_create(rappel_fin_accueil, 5000, NULL);
