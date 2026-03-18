@@ -304,7 +304,7 @@ void setup() {
 
     client_mqtt.setServer(serveur_mqtt, 1883);
     client_mqtt.setCallback(rappel_mqtt);
-    configTime(3600, 3600, "pool.ntp.org");
+    configTzTime("CET-1CEST,M3.5.0/2,M10.5.0/3", "pool.ntp.org");
 #else
     Serial.println("MODE MOCK ACTIF");
     struct tm temps_m;
