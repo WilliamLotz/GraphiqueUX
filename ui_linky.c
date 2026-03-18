@@ -734,6 +734,15 @@ void create_screen_wifi() {
     lv_obj_add_flag(clavier_virtuel, LV_OBJ_FLAG_HIDDEN);
 }
 
+static void rappel_glissement_ecran(lv_event_t * e) {
+    lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+    if(dir == LV_DIR_LEFT) {
+        interface_linky_changer_page(1);
+    } else if(dir == LV_DIR_RIGHT) {
+        interface_linky_changer_page(-1);
+    }
+}
+
 // Initialise toutes les pages de l'interface graphique Linky et charge l'écran principal.
 void interface_linky_initialisation() {
   style_init();
@@ -745,11 +754,29 @@ void interface_linky_initialisation() {
   create_screen_info();
   create_screen_wifi(); // Initialisation de la page WiFi
 
+  lv_obj_add_event_cb(ecran_jauge, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
+  lv_obj_clear_flag(ecran_jauge, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_add_event_cb(ecran_index, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
+  lv_obj_clear_flag(ecran_index, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_add_event_cb(ecran_semaine, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
+  lv_obj_clear_flag(ecran_semaine, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_add_event_cb(ecran_historique, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
+  lv_obj_clear_flag(ecran_historique, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_add_event_cb(ecran_info, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
+  lv_obj_clear_flag(ecran_info, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_add_event_cb(ecran_wifi, rappel_glissement_ecran, LV_EVENT_GESTURE, NULL);
+  lv_obj_clear_flag(ecran_wifi, LV_OBJ_FLAG_SCROLLABLE);
+
   lv_scr_load(ecran_jauge); // Charger le compteur en premier
   index_page_actuelle = 0;
 }
 
-// Change la page affichée à l'écran (direction = +1 ou -1) selon la navigation de l'encodeur.
+// Change la page affichée à l'écran (direction = +1 ou -1) selon la navigation.
 void interface_linky_changer_page(int direction) {
   printf("UI PAGE CHANGE CMD: %d\n", direction);
   index_page_actuelle += direction;
@@ -757,13 +784,16 @@ void interface_linky_changer_page(int direction) {
   if (index_page_actuelle > 5) index_page_actuelle = 0;
   if (index_page_actuelle < 0) index_page_actuelle = 5;
 
+  lv_scr_load_anim_t anim_type = (direction > 0) ? LV_SCR_LOAD_ANIM_MOVE_LEFT : LV_SCR_LOAD_ANIM_MOVE_RIGHT;
+  if (direction == 0) anim_type = LV_SCR_LOAD_ANIM_NONE;
+
   switch (index_page_actuelle) {
-    case 0: lv_scr_load_anim(ecran_jauge, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 1: lv_scr_load_anim(ecran_index, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 2: lv_scr_load_anim(ecran_semaine, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 3: lv_scr_load_anim(ecran_historique, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 4: lv_scr_load_anim(ecran_info, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
-    case 5: lv_scr_load_anim(ecran_wifi, LV_SCR_LOAD_ANIM_NONE, 0, 0, false); break;
+    case 0: lv_scr_load_anim(ecran_jauge, anim_type, 300, 0, false); break;
+    case 1: lv_scr_load_anim(ecran_index, anim_type, 300, 0, false); break;
+    case 2: lv_scr_load_anim(ecran_semaine, anim_type, 300, 0, false); break;
+    case 3: lv_scr_load_anim(ecran_historique, anim_type, 300, 0, false); break;
+    case 4: lv_scr_load_anim(ecran_info, anim_type, 300, 0, false); break;
+    case 5: lv_scr_load_anim(ecran_wifi, anim_type, 300, 0, false); break;
   }
 } // Fin de change_page (cas wifi ajouté)
 

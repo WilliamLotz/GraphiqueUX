@@ -334,7 +334,7 @@ void setup() {
 void loop() {
   if (requete_evenement_bouton != 0) {
       Serial.print("Knob Event: "); Serial.println(requete_evenement_bouton);
-      interface_linky_changer_page(requete_evenement_bouton);
+      // interface_linky_changer_page(requete_evenement_bouton); // Désactivé: Remplacé par les gestes tactiles
       requete_evenement_bouton = 0;
   }
   
