@@ -171,12 +171,6 @@ static void rappel_fin_accueil(lv_timer_t * timer) {
     lv_scr_load_anim(ecran_jauge, LV_SCR_LOAD_ANIM_FADE_ON, 800, 0, true);
 }
 
-void create_screen_accueil() {
-    ecran_accueil = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(ecran_accueil, lv_color_black(), 0);
-    lv_obj_clear_flag(ecran_accueil, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_pad_all(ecran_accueil, 0, 0);
-    
 // Fonction pour animer la barre de démarrage
 static void set_barre_valeur(void * bar, int32_t v) {
     lv_bar_set_value(bar, v, LV_ANIM_OFF);
