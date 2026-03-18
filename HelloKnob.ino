@@ -329,8 +329,6 @@ void setup() {
   Serial.println("KNOB INIT DONE");
 #endif
 
-  interface_linky_initialisation();
-
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.get(0, conf_app);
   if (conf_app.initialise == 0xA5) {
@@ -349,6 +347,8 @@ void setup() {
   initialisation_carte_sd();
 
   generer_historique_aleatoire();
+
+  interface_linky_initialisation();
 
   Serial.println("Setup done."); // Fin de l'initialisation.
 }
